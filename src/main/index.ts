@@ -11,6 +11,7 @@ import { registerWordQuizMode, wordQuizModeDescriptor } from './modes/word-quiz'
 import { idiomsPhrasesModeDescriptor, registerIdiomsPhrasesMode } from './modes/idioms-phrases';
 import { ModeDescriptor } from '../shared/contracts/modes';
 import { checkForUpdates } from './updates/checkForUpdates';
+import { appLogger } from './logging/logger';
 
 const LATEST_RELEASE_PAGE = 'https://github.com/phillippree/studydock/releases/latest';
 
@@ -168,7 +169,9 @@ async function initializeApp(): Promise<void> {
   mainWindow = await createWindow();
 }
 
-app.whenReady().then(initializeApp).catch(console.error);
+app.whenReady().then(initializeApp).catch((error: unknown) => {
+  appLogger.error(`Application startup failed: ${error instanceof Error ? error.stack || error.message : String(error)}`);
+});
 
 app.on('window-all-closed', () => {
   app.quit();

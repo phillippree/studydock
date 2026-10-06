@@ -28,8 +28,22 @@ function readStagedJson(file) {
 
 const packageJson = readStagedJson('package.json');
 const lockJson = readStagedJson('package-lock.json');
-const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(packageJson.version);
-if (!match) throw new Error(`Expected package.json version to use major.minor.patch; got "${packageJson.version}".`);
+
+if (lockJson.version !== packageJson.version || lockJson.packages?.['']?.version !== packageJson.version) {
+  throw new Error('package.json and package-lock.json must have matching versions before committing.');
+}
+
+let headVersion = null;
+try {
+  const headPackage = JSON.parse(execFileSync('git', ['show', 'HEAD:package.json'], { cwd: root, encoding: 'utf8' }));
+  headVersion = headPackage.version;
+} catch {
+  // The first commit has no HEAD version to compare with.
+}
+
+const baseVersion = headVersion && packageJson.version !== headVersion ? headVersion : packageJson.version;
+const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(baseVersion);
+if (!match) throw new Error(`Expected package version to use major.minor.patch; got "${baseVersion}".`);
 
 let [major, minor, patch] = match.slice(1).map(Number);
 if (bump === 'major') { major++; minor = 0; patch = 0; }
@@ -37,6 +51,18 @@ else if (bump === 'minor') { minor++; patch = 0; }
 else patch++;
 
 const nextVersion = `${major}.${minor}.${patch}`;
+
+// A previous commit-msg hook may have staged the bump after a commit was
+// interrupted or rejected. If the staged version is already the exact bump
+// implied by HEAD and this message, commit it as-is instead of bumping twice.
+if (headVersion && packageJson.version !== headVersion) {
+  if (packageJson.version === nextVersion) {
+    console.log(`StudyDock version already staged for this commit: ${packageJson.version}`);
+    process.exit(0);
+  }
+  throw new Error(`Staged version ${packageJson.version} differs from HEAD (${headVersion}) and is not the expected ${bump} bump (${nextVersion}).`);
+}
+
 packageJson.version = nextVersion;
 lockJson.version = nextVersion;
 if (lockJson.packages?.['']) lockJson.packages[''].version = nextVersion;
@@ -44,4 +70,4 @@ if (lockJson.packages?.['']) lockJson.packages[''].version = nextVersion;
 writeFileSync(path.join(root, 'package.json'), `${JSON.stringify(packageJson, null, 2)}\n`);
 writeFileSync(path.join(root, 'package-lock.json'), `${JSON.stringify(lockJson, null, 2)}\n`);
 execFileSync('git', ['add', '--', 'package.json', 'package-lock.json'], { cwd: root, stdio: 'inherit' });
-console.log(`StudyDock version bumped ${bump}: ${match[0]} → ${nextVersion}`);
+console.log(`StudyDock version bumped ${bump}: ${baseVersion} → ${nextVersion}`);

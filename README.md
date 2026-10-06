@@ -78,6 +78,8 @@ StudyDock application data/
   secrets/
     gemini-key.enc
   backups/
+  logs/
+    studydock.log
   storage/
     audio/
       vocab-pronunciation/  # Compressed μ-law audio generated on demand
@@ -88,6 +90,7 @@ StudyDock application data/
 - **Database (`database/studydock.sqlite`):** Words, definitions, and migration history managed with SQLite WAL mode and foreign-key enforcement.
 - **Settings (`settings/preferences.json`):** Application preferences such as the selected Gemini model (`gemini-2.5-flash`, `gemini-2.0-flash`, etc.).
 - **Secrets (`secrets/gemini-key.enc`):** Gemini API key encrypted using Electron's OS-backed `safeStorage` (Keychain on macOS, DPAPI on Windows, Secret Service on Linux). If OS encryption is unavailable, keys are kept in session memory only and never written unencrypted to disk.
+- **Logs (`logs/studydock.log`):** Main-process Gemini diagnostics and startup errors are written here with timestamps and also remain visible in the terminal during development. API keys are redacted. Log files rotate at 2 MB, retaining up to four older files alongside the current log.
 - **Pronunciation audio (`storage/audio/vocab-pronunciation/`):** On first playback, StudyDock asks Gemini's text-to-speech service for its default WAV audio, converts it in memory to compact 8 kHz μ-law audio, and saves only those compressed bytes (`.ulaw` files). The renderer decodes the cached bytes in memory for playback; it does not create an uncompressed audio file. Later playback uses the cached file and works offline. The word text and language are sent to Gemini when the audio is first generated; this uses Gemini API quota. Generated pronunciation files are separate from the word database and ordinary word exports.
 
 ### Files created by Electron and Chromium
@@ -110,6 +113,7 @@ Electron also keeps a Chromium browser profile alongside StudyDock's application
 | `Network Persistent State` | Persistent state used by Chromium's network stack. |
 | `declarative_performance_observer.db`, `declarative_performance_observer.db-journal` | Chromium performance-observation data and its temporary database journal. |
 | `backups/` | Reserved for StudyDock database backups. |
+| `logs/` | StudyDock main-process diagnostics, including Gemini request/response summaries and startup errors. Logs rotate at a fixed size and redact API-key-shaped values. |
 | `storage/` | Persistent files owned by StudyDock modes, including generated pronunciation audio. |
 
 Files ending in `-wal` or `-journal` are database support files. Let the app and SQLite manage them; do not manually remove them while StudyDock is open. This README describes file purposes only and does not include a machine-specific storage location.
@@ -184,7 +188,7 @@ StudyDock bumps its semantic version on every commit and records the new version
 git config core.hooksPath .githooks
 ```
 
-The `prepare-commit-msg` hook uses the supplied commit message to choose the bump and stages the updated version files before Git creates the commit. Supply the message with `-m` or `-F` so the hook can read it before the commit is written:
+The `commit-msg` hook reads the final message after you enter it, then stages the updated version files before Git creates the commit. You can use the editor opened by plain `git commit`, or supply a message directly:
 
 ```bash
 git commit -m "feat: add phrase review"

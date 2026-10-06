@@ -2,6 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { secretsService } from '../settings/secrets';
 import { settingsService } from '../settings/service';
+import { appLogger } from '../logging/logger';
 import { AvailableModel, ListModelsResult, TestConnectionResult } from '../../shared/contracts/settings';
 
 export interface GenerateStructuredRequest<T> {
@@ -34,7 +35,7 @@ export class GeminiClient {
     };
 
     // Log the Gemini payload and result for diagnostics, while never logging credentials.
-    console.info(`[StudyDock Gemini ${direction}]\n${JSON.stringify(redact(details), null, 2)}`);
+    appLogger.info(`[StudyDock Gemini ${direction}]\n${JSON.stringify(redact(details), null, 2)}`);
   }
 
   public async listModels(apiKeyOverride?: string): Promise<ListModelsResult> {

@@ -39,6 +39,10 @@ class StoragePaths {
     return path.join(this.getRoot(), 'backups');
   }
 
+  public getLogsDir(): string {
+    return path.join(this.getRoot(), 'logs');
+  }
+
   public getModeStorageDir(modeId: string): string {
     return path.join(this.getRoot(), 'storage', 'modes', modeId);
   }
@@ -55,6 +59,7 @@ class StoragePaths {
       path.join(root, 'settings'),
       path.join(root, 'secrets'),
       path.join(root, 'backups'),
+      this.getLogsDir(),
       path.join(root, 'storage'),
       path.join(root, 'storage', 'modes'),
       this.getVocabPronunciationDir()
