@@ -1,0 +1,20 @@
+node_modules
+dist/
+# Generated output
+dist/
+release/
+coverage/
+# Credentials and local configuration
+.env
+.env.*
+*.enc
+*.pem
+*.key
+# Runtime application data must never be committed
+.studydock-data/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.log
+.DS_Store

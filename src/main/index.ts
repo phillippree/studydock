@@ -1,0 +1,151 @@
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import path from 'path';
+import { storagePaths } from './storage/paths';
+import { getDatabase, closeDatabase } from './database/connection';
+import { MigrationRunner } from './database/migrations';
+import { geminiClient } from './gemini/client';
+import { settingsService } from './settings/service';
+import { registerVocabMode, vocabModeDescriptor } from './modes/vocab';
+import { ModeDescriptor } from '../shared/contracts/modes';
+
+// Set application identity
+app.name = 'StudyDock';
+
+let mainWindow: BrowserWindow | null = null;
+export function getMainWindow(): BrowserWindow | null {
+  return mainWindow;
+}
+
+const REGISTERED_MODES: ModeDescriptor[] = [
+  vocabModeDescriptor
+];
+
+async function createWindow(): Promise<BrowserWindow> {
+  const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
+
+  const win = new BrowserWindow({
+    width: 1100,
+    height: 800,
+    minWidth: 820,
+    minHeight: 620,
+    title: 'StudyDock',
+    backgroundColor: '#f6f7f9',
+    show: false,
+    titleBarStyle: 'hiddenInset',
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/index.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true
+    }
+  });
+
+  // Display when ready to prevent visual flicker
+  win.once('ready-to-show', () => {
+    win.show();
+  });
+
+  // Security: Prevent arbitrary navigation to remote web pages
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https:') || url.startsWith('http:')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  win.webContents.on('will-navigate', (event, navigationUrl) => {
+    const parsedUrl = new URL(navigationUrl);
+    if (parsedUrl.protocol !== 'file:' && !navigationUrl.startsWith('http://localhost:5173')) {
+      event.preventDefault();
+    }
+  });
+
+  if (isDev && !app.isPackaged) {
+    try {
+      await win.loadURL('http://localhost:5173');
+    } catch {
+      await win.loadFile(path.join(__dirname, '../renderer/index.html'));
+    }
+  } else {
+    await win.loadFile(path.join(__dirname, '../renderer/index.html'));
+  }
+
+  return win;
+}
+
+function registerSettingsHandlers(): void {
+  ipcMain.handle('settings:getSettings', async () => {
+    return settingsService.getSettings();
+  });
+
+  ipcMain.handle('settings:saveApiKey', async (_event, input) => {
+    if (!input || typeof input.apiKey !== 'string') {
+      throw new Error('Invalid API key input');
+    }
+    return settingsService.saveApiKey(input);
+  });
+
+  ipcMain.handle('settings:removeApiKey', async () => {
+    return settingsService.removeApiKey();
+  });
+
+  ipcMain.handle('settings:testConnection', async (_event, model) => {
+    return geminiClient.testConnection(typeof model === 'string' ? model : undefined);
+  });
+
+  ipcMain.handle('settings:setModel', async (_event, model) => {
+    if (typeof model !== 'string' || !model.trim()) {
+      throw new Error('Invalid model identifier');
+    }
+    return settingsService.setModel(model.trim());
+  });
+
+  ipcMain.handle('settings:openStorageFolder', async () => {
+    return settingsService.openStorageFolder();
+  });
+
+  ipcMain.handle('modes:getModes', async () => {
+    return REGISTERED_MODES.sort((a, b) => a.order - b.order);
+  });
+}
+
+async function initializeApp(): Promise<void> {
+  // Ensure application directories exist
+  storagePaths.ensureDirectories();
+
+  // Initialize SQLite database
+  const db = getDatabase();
+
+  // Register and run migrations for all modes
+  const migrationRunner = new MigrationRunner(db);
+  const vocabMode = registerVocabMode(db, geminiClient, settingsService);
+
+  migrationRunner.runMigrations([
+    ...vocabMode.migrations
+  ]);
+
+  // Register settings & mode registry IPC handlers
+  registerSettingsHandlers();
+
+  // Create UI Window
+  mainWindow = await createWindow();
+}
+
+app.whenReady().then(initializeApp).catch(console.error);
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('activate', async () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    mainWindow = await createWindow();
+  }
+});
+
+app.on('will-quit', () => {
+  closeDatabase();
+});

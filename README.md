@@ -1,0 +1,214 @@
+# StudyDock
+
+**StudyDock** is an offline-first desktop personal learning hub built with **Electron**, **TypeScript**, **React**, **Vite**, **SQLite**, and the **Google Gemini SDK**.
+
+The application features an extensible, modular architecture where independent learning modes can be plugged in without modifying existing mode implementation files. **Vocabulary** is the foundational mode.
+
+---
+
+## Architecture Overview
+
+StudyDock enforces strict process isolation:
+
+1. **Renderer Process (React & TSX):** UI components, mode navigation, and UI state. The renderer has zero direct access to Node.js, SQLite, the filesystem, or stored API keys.
+2. **Preload Bridge:** A restricted, typed bridge exposing approved named operations to `window.studydockBridge`.
+3. **Main Process (Electron & Node.js):** SQLite database access with transactions and migrations, OS-backed API key encryption, and shared Gemini client integration.
+
+```mermaid
+flowchart TB
+    subgraph Renderer["Renderer · React"]
+        Home["Landing page"]
+        Registry["Mode registry"]
+        Picker["Mode selector"]
+        VocabUI["Vocabulary UI entry point"]
+        FutureUI["Future mode UI entry points"]
+
+        Home --> Registry
+        Picker --> Registry
+        Registry --> VocabUI
+        Registry --> FutureUI
+    end
+
+    Renderer <-->|"Typed operations"| Preload["Restricted preload bridge"]
+    Preload <-->|"Validated IPC requests and results"| Handlers["Main-process handlers"]
+
+    subgraph Main["Electron main process"]
+        Handlers --> VocabService["Vocabulary service"]
+        Handlers --> FutureService["Future mode services"]
+        Handlers --> Settings["Settings service"]
+
+        VocabService --> VocabRepository["Vocabulary repository"]
+        VocabRepository --> Database["Database connection"]
+
+        VocabService --> GeminiClient["Shared Gemini client"]
+        FutureService --> GeminiClient
+        FutureService --> Database
+
+        GeminiClient --> Secrets["API key service"]
+        Settings --> Secrets
+    end
+
+    Database <--> SQLite[("Local SQLite database file")]
+    Secrets <--> SecureStorage["OS-backed encrypted storage"]
+    GeminiClient <-->|"Prompt and response"| Gemini["Gemini API"]
+```
+
+---
+
+## Application Data & Storage Layout
+
+All runtime application data is stored in Electron's per-user application data directory (`app.getPath('userData')`), completely outside source and compiled application trees.
+
+```text
+StudyDock application data/
+  database/
+    studydock.sqlite
+  settings/
+    preferences.json
+  secrets/
+    gemini-key.enc
+  backups/
+  storage/
+    modes/
+      vocab/
+```
+
+- **Database (`database/studydock.sqlite`):** Words, definitions, and migration history managed with SQLite WAL mode and foreign-key enforcement.
+- **Settings (`settings/preferences.json`):** Application preferences such as the selected Gemini model (`gemini-2.5-flash`, `gemini-2.0-flash`, etc.).
+- **Secrets (`secrets/gemini-key.enc`):** Gemini API key encrypted using Electron's OS-backed `safeStorage` (Keychain on macOS, DPAPI on Windows, Secret Service on Linux). If OS encryption is unavailable, keys are kept in session memory only and never written unencrypted to disk.
+
+---
+
+## Development & Build Commands
+
+### Prerequisites
+- **Node.js**: v20+ or v24+
+- **npm**: v10+
+
+### 1. Install Dependencies
+```bash
+npm install
+```
+*(Native SQLite dependencies for Electron will automatically be compiled via the postinstall script)*
+
+### 2. Run in Development Mode
+Compiles the main and preload scripts and starts Vite dev server with Electron:
+```bash
+npm run dev
+```
+
+### 3. Type Checking
+Verifies full TypeScript typing across main, preload, renderer, shared contracts, and tests:
+```bash
+npm run typecheck
+```
+
+### 4. Run Automated Tests
+Runs unit and integration tests using Vitest:
+```bash
+npm test
+```
+
+### 5. Production Build
+Performs type checking, bundles the React interface with Vite, and compiles the Electron main and preload scripts:
+```bash
+npm run build
+```
+
+### 6. Start Compiled Production App
+```bash
+npm start
+```
+
+### 7. Package Desktop Application
+Creates distributable installers (`.dmg`/`.zip` on macOS, `.exe` NSIS installer on Windows, `.AppImage` on Linux) in the `release/` directory:
+```bash
+npm run package
+```
+
+---
+
+## How to Add a New Learning Mode
+
+Adding a new independent learning mode (e.g. `Grammar`, `Flashcards`, or `Math`) requires 4 simple steps without editing any existing vocabulary files:
+
+### Step 1: Define Mode Contracts & Migrations
+Create `src/main/modes/<modeId>/migrations/001_initial.ts`:
+```ts
+import { Migration } from '../../../database/migrations';
+
+export const modeInitialMigration: Migration = {
+  id: '<modeId>_001_initial',
+  name: 'Initial schema for <modeId>',
+  modeId: '<modeId>',
+  up: (db) => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS <modeId>_records (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+    `);
+  }
+};
+```
+
+### Step 2: Implement Main Process Service & Repository
+Create `src/main/modes/<modeId>/service.ts` and `src/main/modes/<modeId>/index.ts` to register IPC handlers and export the mode descriptor:
+```ts
+import { ModeDescriptor } from '../../../shared/contracts/modes';
+
+export const myModeDescriptor: ModeDescriptor = {
+  id: 'mymode',
+  displayName: 'My Mode',
+  description: 'Practice and master new skills.',
+  iconName: 'Sparkles',
+  order: 2
+};
+```
+
+### Step 3: Implement Renderer Component
+Create `src/renderer/modes/<modeId>/MyModePage.tsx`:
+```tsx
+import React from 'react';
+
+export const MyModePage: React.FC<{ onNavigateHome: () => void }> = ({ onNavigateHome }) => {
+  return (
+    <div className="card">
+      <h1>My Learning Mode</h1>
+      <button className="btn btn-secondary" onClick={onNavigateHome}>Back Home</button>
+    </div>
+  );
+};
+export default MyModePage;
+```
+
+### Step 4: Register in Mode Registry
+Add the entry in `src/renderer/shell/modeRegistry.ts`:
+```ts
+import React from 'react';
+
+modeRegistry['mymode'] = {
+  descriptor: {
+    id: 'mymode',
+    displayName: 'My Mode',
+    description: 'Practice and master new skills.',
+    iconName: 'Sparkles',
+    order: 2
+  },
+  component: React.lazy(() => import('../modes/mymode/MyModePage'))
+};
+```
+The application shell, landing page cards, header navigation, and error boundary will automatically detect, list, and render your new mode.
+
+---
+
+## Manual Gemini Connection Verification
+
+To verify live connectivity with the Google Gemini API:
+1. Launch the application (`npm start` or `npm run dev`).
+2. On the **Landing Page**, locate the **Gemini AI Connection** card.
+3. Paste your Gemini API key (starts with `AIzaSy...`).
+4. Click **Save Key** to persist it using OS-backed encryption.
+5. Click **Test Connection**. StudyDock sends a minimal ping request and reports success along with the measured response latency.
+6. Open **Vocabulary Mode** and click **Next random word** or add a custom word to query structured definitions in real time.
