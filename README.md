@@ -167,6 +167,22 @@ To create only a macOS `.dmg`, run `bash scripts/build-macos-dmg.sh` (or `npm ru
 
 The macOS app and disk image use the StudyDock open-book-and-compass icon from `assets/studydock.icns`; its 1024-pixel PNG source is `assets/studydock-icon.png`.
 
+## Versioning
+
+StudyDock bumps its semantic version on every commit and records the new version in both `package.json` and `package-lock.json`. Enable the repository's commit hook once after cloning:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The hook uses the commit message to choose the bump:
+
+- **Major:** add `!` after the commit type, such as `feat!: replace the vocabulary data format`, or include a `BREAKING CHANGE:` footer.
+- **Minor:** start the subject with `feat:`, such as `feat: add phrase review`.
+- **Patch:** all other commit messages, such as `fix: handle missing audio` or `docs: clarify setup`.
+
+For example, `1.4.2` becomes `2.0.0` for a major change, `1.5.0` for a feature, or `1.4.3` for a patch. The hook stages only the two version files along with the commit. Keep those files free of unstaged edits when committing so the hook can safely update them.
+
 ---
 
 ## How to Add a New Learning Mode
