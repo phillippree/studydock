@@ -183,6 +183,12 @@ The hook uses the commit message to choose the bump:
 
 For example, `1.4.2` becomes `2.0.0` for a major change, `1.5.0` for a feature, or `1.4.3` for a patch. The hook stages only the two version files along with the commit. Keep those files free of unstaged edits when committing so the hook can safely update them.
 
+### Application updates
+
+At launch, StudyDock checks the latest published GitHub Release for `phillippree/studydock`. If its version is newer than the installed app, an **Update to x.y.z** button appears beside the app version in the footer. The button opens the GitHub Release page so you can download and install the macOS disk image. StudyDock does not pull source code or rebuild and reinstall itself.
+
+To publish an update, create a GitHub Release with a semantic version tag such as `v1.2.0` and attach the packaged `.dmg`. The repository currently has no published latest release, so the app will not show an update button until one is published. Automatic download and installation could be added later with Electron's updater and GitHub Releases. macOS requires a code signature for auto-updating to work; notarization is recommended for distributing the app without the normal first-open security warning.
+
 ---
 
 ## How to Add a New Learning Mode

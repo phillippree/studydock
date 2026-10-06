@@ -2,6 +2,10 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { StudyDockAPI } from '../shared/contracts/ipc';
 
 const api: StudyDockAPI = {
+  // Application updates
+  checkForUpdates: () => ipcRenderer.invoke('updates:checkForUpdates'),
+  openLatestRelease: () => ipcRenderer.invoke('updates:openLatestRelease'),
+
   // Modes
   getModes: () => ipcRenderer.invoke('modes:getModes'),
 

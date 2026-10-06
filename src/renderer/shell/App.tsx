@@ -1,13 +1,40 @@
-import React, { useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { LandingPage } from './LandingPage';
 import { ModePicker } from './ModePicker';
 import { ErrorBoundary } from './ErrorBoundary';
 import { getModeComponent } from './modeRegistry';
 import { Compass } from 'lucide-react';
 import packageJson from '../../../package.json';
+import { UpdateCheckResult } from '../../shared/contracts/updates';
 
 export const App: React.FC = () => {
   const [currentModeId, setCurrentModeId] = useState<string | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<UpdateCheckResult['status']>('unavailable');
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
+  const [updateLinkError, setUpdateLinkError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    window.studydockBridge.checkForUpdates()
+      .then(result => {
+        if (!active) return;
+        setUpdateStatus(result.status);
+        setLatestVersion('latestVersion' in result ? result.latestVersion : null);
+      })
+      .catch(() => {
+        if (active) setUpdateStatus('unavailable');
+      });
+    return () => { active = false; };
+  }, []);
+
+  const handleOpenUpdate = async () => {
+    try {
+      await window.studydockBridge.openLatestRelease();
+      setUpdateLinkError(false);
+    } catch {
+      setUpdateLinkError(true);
+    }
+  };
 
   const ModeComponent = currentModeId ? getModeComponent(currentModeId) : null;
 
@@ -59,7 +86,14 @@ export const App: React.FC = () => {
       </main>
       <footer className="app-footer">
         <span>Local learning libraries · Gemini for new lookups</span>
-        <span>Version {packageJson.version}</span>
+        <div className="app-footer-version" aria-live="polite">
+          {updateStatus === 'available' && latestVersion && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenUpdate}>
+              Update to {latestVersion}
+            </button>
+          )}
+          <span title={updateLinkError ? 'Could not open the GitHub release page.' : undefined}>Version {packageJson.version}</span>
+        </div>
       </footer>
     </div>
   );

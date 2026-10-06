@@ -15,8 +15,13 @@ import {
 } from './vocab';
 import { WordQuizAnswer } from './wordQuiz';
 import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt, LookupExpressionResult } from './idiomsPhrases';
+import { UpdateCheckResult } from './updates';
 
 export interface StudyDockAPI {
+  // Application updates
+  checkForUpdates(): Promise<UpdateCheckResult>;
+  openLatestRelease(): Promise<{ success: boolean }>;
+
   // Modes
   getModes(): Promise<ModeDescriptor[]>;
 

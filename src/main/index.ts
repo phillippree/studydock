@@ -10,6 +10,9 @@ import { registerVocabMode, vocabModeDescriptor } from './modes/vocab';
 import { registerWordQuizMode, wordQuizModeDescriptor } from './modes/word-quiz';
 import { idiomsPhrasesModeDescriptor, registerIdiomsPhrasesMode } from './modes/idioms-phrases';
 import { ModeDescriptor } from '../shared/contracts/modes';
+import { checkForUpdates } from './updates/checkForUpdates';
+
+const LATEST_RELEASE_PAGE = 'https://github.com/phillippree/studydock/releases/latest';
 
 // Set application identity
 app.name = 'StudyDock';
@@ -80,6 +83,21 @@ async function createWindow(): Promise<BrowserWindow> {
 }
 
 function registerSettingsHandlers(): void {
+  ipcMain.handle('updates:checkForUpdates', async (event) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
+      throw new Error('Unauthorized update check');
+    }
+    return checkForUpdates(app.getVersion());
+  });
+
+  ipcMain.handle('updates:openLatestRelease', async (event) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
+      throw new Error('Unauthorized update link');
+    }
+    await shell.openExternal(LATEST_RELEASE_PAGE);
+    return { success: true };
+  });
+
   ipcMain.handle('settings:getSettings', async () => {
     return settingsService.getSettings();
   });
