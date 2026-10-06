@@ -163,7 +163,16 @@ Creates distributable installers (`.dmg`/`.zip` on macOS, `.exe` NSIS installer 
 npm run package
 ```
 
-To create only a macOS `.dmg`, run `bash scripts/build-macos-dmg.sh` (or `npm run package:mac`) on a Mac. Install dependencies first with `npm ci`. The disk image is written to `release/` and is built for the Mac's current architecture. Apple Developer signing and notarization are not configured, so macOS may show a first-open security warning.
+#### Build a macOS DMG
+
+On a Mac, install dependencies and run the repository script from the project folder:
+
+```bash
+npm ci
+bash scripts/build-macos-dmg.sh
+```
+
+The script builds the TypeScript/renderer application, then packages a `.dmg` with Electron Builder. Find the resulting disk image in `release/`; it targets the Mac's current architecture. You can also use `npm run package:mac`. Apple Developer signing and notarization are not configured, so macOS may show a first-open security warning.
 
 The macOS app and disk image use the StudyDock open-book-and-compass icon from `assets/studydock.icns`; its 1024-pixel PNG source is `assets/studydock-icon.png`.
 
@@ -175,13 +184,36 @@ StudyDock bumps its semantic version on every commit and records the new version
 git config core.hooksPath .githooks
 ```
 
+The `prepare-commit-msg` hook uses the supplied commit message to choose the bump and stages the updated version files before Git creates the commit. Supply the message with `-m` or `-F` so the hook can read it before the commit is written:
+
+```bash
+git commit -m "feat: add phrase review"
+```
+
 The hook uses the commit message to choose the bump:
 
 - **Major:** add `!` after the commit type, such as `feat!: replace the vocabulary data format`, or include a `BREAKING CHANGE:` footer.
 - **Minor:** start the subject with `feat:`, such as `feat: add phrase review`.
 - **Patch:** all other commit messages, such as `fix: handle missing audio` or `docs: clarify setup`.
 
-For example, `1.4.2` becomes `2.0.0` for a major change, `1.5.0` for a feature, or `1.4.3` for a patch. The hook stages only the two version files along with the commit. Keep those files free of unstaged edits when committing so the hook can safely update them.
+For example, `1.4.2` becomes `2.0.0` for a major change, `1.5.0` for a feature, or `1.4.3` for a patch. Keep `package.json` and `package-lock.json` free of unstaged edits when committing so the hook can safely update them.
+
+### Create and push a version tag
+
+After a versioned commit is complete and the working tree is clean on `main`, create and push its matching annotated Git tag:
+
+```bash
+bash scripts/tag-and-push-version.sh
+```
+
+The script reads the version from `package.json`, checks that it matches the committed version, verifies that the tag does not already exist locally or on `origin`, and asks before pushing. After confirmation, it pushes the current `main` commit to `origin`, then creates and pushes the matching annotated tag (for example, `v1.3.0`). The equivalent manual commands are:
+
+```bash
+git push origin main
+git push origin v1.3.0
+```
+
+Replace `v1.3.0` with the tag created for your version. If the script reports that the tag push failed after `main` was pushed, retry the second command. The script does not build the app, upload a `.dmg`, or publish a GitHub Release. To distribute an update, package the app and attach the `.dmg` to a GitHub Release using that tag.
 
 ### Application updates
 

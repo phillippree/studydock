@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+MESSAGE_SOURCE="${2:-}"
+
+# An amend reuses the existing commit message. Version files that were staged
+# after the original commit must be included unchanged, without another bump.
+if [[ "$MESSAGE_SOURCE" == "commit" ]]; then
+  exit 0
+fi
+
+# The version bump must be based on the final commit message and staged before
+# Git creates the commit tree. Requiring -m/-F makes that choice deterministic.
+if [[ "$MESSAGE_SOURCE" != "message" ]]; then
+  echo "StudyDock versioning requires a message supplied with -m or -F." >&2
+  echo "Example: git commit -m 'feat: add phrase review'" >&2
+  exit 1
+fi
+
+node "$PROJECT_ROOT/scripts/bump-version.cjs" "$1"

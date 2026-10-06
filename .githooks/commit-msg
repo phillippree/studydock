@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-node "$PROJECT_ROOT/scripts/bump-version.cjs" "$1"
