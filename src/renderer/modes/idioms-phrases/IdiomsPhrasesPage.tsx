@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, BookOpen, CheckCircle, Plus, Quote, Search } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertCircle, ArrowLeft, ArrowRight, BookOpen, Brain, CheckCircle, Eye, Plus, Quote, Search } from 'lucide-react';
 import { ExpressionType, IdiomPhraseEntry } from '../../../shared/contracts/idiomsPhrases';
 
 interface IdiomsPhrasesPageProps {
@@ -7,32 +7,95 @@ interface IdiomsPhrasesPageProps {
 }
 
 export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
+  const pageSize = 6;
   const [entries, setEntries] = useState<IdiomPhraseEntry[]>([]);
+  const [total, setTotal] = useState(0);
   const [expression, setExpression] = useState('');
   const [type, setType] = useState<ExpressionType>('idiom');
   const [filter, setFilter] = useState<'all' | ExpressionType>('all');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const [reloadVersion, setReloadVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const requestSequence = useRef(0);
+  const hasLibraryQuery = search.trim().length > 0 || filter !== 'all';
+  const [view, setView] = useState<'library' | 'quiz'>('library');
+  const [quizFilter, setQuizFilter] = useState<'all' | ExpressionType>('all');
+  const [quizPrompt, setQuizPrompt] = useState<Awaited<ReturnType<Window['studydockBridge']['idiomsPhrasesQuizGetRandom']>>>(null);
+  const [quizAnswer, setQuizAnswer] = useState<IdiomPhraseEntry | null>(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizRevealing, setQuizRevealing] = useState(false);
+  const [quizError, setQuizError] = useState<string | null>(null);
+  const quizRequestSequence = useRef(0);
+
+  const loadQuizPrompt = async (selectedFilter = quizFilter, excludeId?: string) => {
+    const requestId = ++quizRequestSequence.current;
+    setQuizLoading(true);
+    setQuizAnswer(null);
+    setQuizError(null);
+    try {
+      const prompt = await window.studydockBridge.idiomsPhrasesQuizGetRandom(
+        selectedFilter === 'all' ? undefined : selectedFilter,
+        excludeId
+      );
+      if (requestId === quizRequestSequence.current) setQuizPrompt(prompt);
+    } catch (err: unknown) {
+      if (requestId === quizRequestSequence.current) {
+        setQuizPrompt(null);
+        setQuizError(err instanceof Error ? err.message : 'Could not load a quiz expression.');
+      }
+    } finally {
+      if (requestId === quizRequestSequence.current) setQuizLoading(false);
+    }
+  };
+
+  const startQuiz = () => {
+    setView('quiz');
+    void loadQuizPrompt();
+  };
+
+  const revealQuizAnswer = async () => {
+    if (!quizPrompt || quizAnswer || quizRevealing) return;
+    const currentId = quizPrompt.id;
+    const requestId = quizRequestSequence.current;
+    setQuizRevealing(true);
+    setQuizError(null);
+    try {
+      const answer = await window.studydockBridge.idiomsPhrasesQuizReveal(currentId);
+      if (requestId === quizRequestSequence.current && quizPrompt?.id === currentId) setQuizAnswer(answer);
+    } catch (err: unknown) {
+      if (requestId === quizRequestSequence.current) setQuizError(err instanceof Error ? err.message : 'Could not reveal this expression.');
+    } finally {
+      if (requestId === quizRequestSequence.current) setQuizRevealing(false);
+    }
+  };
 
   const loadEntries = useCallback(async () => {
+    const requestId = ++requestSequence.current;
     setIsLoading(true);
     try {
-      setEntries(await window.studydockBridge.idiomsPhrasesList());
+      const result = await window.studydockBridge.idiomsPhrasesList({
+        type: filter === 'all' ? undefined : filter,
+        search,
+        offset: page * pageSize,
+        limit: pageSize
+      });
+      if (requestId === requestSequence.current) {
+        setEntries(result.entries);
+        setTotal(result.total);
+      }
     } catch (err: unknown) {
-      setFeedback({ kind: 'error', message: err instanceof Error ? err.message : 'Could not load your saved expressions.' });
+      if (requestId === requestSequence.current) {
+        setFeedback({ kind: 'error', message: err instanceof Error ? err.message : 'Could not load your saved expressions.' });
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === requestSequence.current) setIsLoading(false);
     }
-  }, []);
+  }, [filter, page, pageSize, search]);
 
-  useEffect(() => { void loadEntries(); }, [loadEntries]);
-
-  const filteredEntries = useMemo(() => entries.filter(entry =>
-    (filter === 'all' || entry.type === filter) &&
-    `${entry.expression} ${entry.meaning}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
-  ), [entries, filter, search]);
+  useEffect(() => { void loadEntries(); }, [loadEntries, reloadVersion]);
 
   const handleLookup = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -46,7 +109,8 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
       } else if (result.status === 'duplicate') {
         setFeedback({ kind: 'success', message: `“${result.entry.expression}” is already in your saved ${type === 'idiom' ? 'idioms' : 'phrases'}.` });
       } else {
-        setEntries(current => [result.entry, ...current.filter(entry => entry.id !== result.entry.id)]);
+        setPage(0);
+        setReloadVersion(version => version + 1);
         setExpression('');
         setFeedback({ kind: 'success', message: `“${result.entry.expression}” was verified and saved to your library.` });
       }
@@ -61,11 +125,32 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
     <div className="expressions-page">
       <div className="expressions-heading">
         <div className="expressions-title">
-          <span className="expressions-icon"><Quote size={22} /></span>
-          <div><h1>Idioms &amp; Phrases</h1><p>Look up expressions and save their meaning and examples.</p></div>
+          <span className="expressions-icon">{view === 'library' ? <Quote size={22} /> : <Brain size={22} />}</span>
+          <div><h1>{view === 'library' ? 'Idioms & Phrases' : 'Guess the meaning'}</h1><p>{view === 'library' ? 'Look up expressions and save their meaning and examples.' : 'Think of the meaning, then reveal the answer.'}</p></div>
         </div>
-        <span className="badge badge-saved">{entries.length} saved</span>
+        {view === 'library' ? <div className="expressions-heading-actions"><span className="badge badge-saved">{total} {hasLibraryQuery ? 'matches' : 'saved'}</span><button className="btn btn-secondary" onClick={startQuiz}><Brain size={16} />Practice</button></div> : <button className="btn btn-secondary" onClick={() => { quizRequestSequence.current++; setView('library'); }}><BookOpen size={16} />Back to library</button>}
       </div>
+
+      {view === 'quiz' ? <section className="card expression-quiz-card">
+        <div className="expressions-filters" role="group" aria-label="Quiz expression type">
+          {(['all', 'idiom', 'phrase'] as const).map(value => <button key={value} className={`btn btn-sm ${quizFilter === value ? 'btn-primary' : 'btn-secondary'}`} disabled={quizLoading || quizRevealing} onClick={() => { setQuizFilter(value); void loadQuizPrompt(value); }}>{value === 'all' ? 'All' : value === 'idiom' ? 'Idioms' : 'Phrases'}</button>)}
+        </div>
+        {quizLoading ? <div className="expressions-quiz-state"><div className="spinner" /><p>Finding an expression…</p></div> : quizPrompt ? <>
+          <div className="expression-quiz-type">{quizPrompt.type}</div>
+          <p className="expression-quiz-question">What does this expression mean?</p>
+          <h2 className="expression-quiz-prompt">{quizPrompt.expression}</h2>
+          <p className="expression-language">{quizPrompt.language.toUpperCase()}</p>
+          {quizAnswer && <div className="expression-quiz-answer" aria-live="polite">
+            <h3>Meaning</h3><p>{quizAnswer.meaning}</p>
+            {quizAnswer.examples.length > 0 && <div className="expression-examples">{quizAnswer.examples.map(example => <p key={example.id}>“{example.example}”</p>)}</div>}
+          </div>}
+          {quizError && <p className="quiz-error" role="alert"><AlertCircle size={16} />{quizError}</p>}
+          <div className="expression-quiz-actions">
+            {!quizAnswer && <button className="btn btn-primary" onClick={() => void revealQuizAnswer()} disabled={quizRevealing}><Eye size={16} />{quizRevealing ? 'Revealing…' : 'Reveal meaning'}</button>}
+            <button className="btn btn-secondary" onClick={() => void loadQuizPrompt(quizFilter, quizPrompt.id)} disabled={quizLoading || quizRevealing}><ArrowRight size={16} />Next expression</button>
+          </div>
+        </> : <div className="expressions-quiz-state"><Quote size={28} /><h2>No saved expressions in this category</h2><p>Save an idiom or phrase in your library to practice it here.</p>{quizError && <p className="quiz-error" role="alert">{quizError}</p>}<button className="btn btn-secondary" onClick={() => setView('library')}><BookOpen size={16} />Back to library</button></div>}
+      </section> : <>
 
       <section className="card expressions-lookup">
         <h2><Plus size={18} />Look up an expression</h2>
@@ -97,18 +182,27 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
       <section className="expressions-library">
         <div className="expressions-library-heading"><div><h2><BookOpen size={19} />Your expression library</h2><p>Saved expressions are available offline.</p></div>
           <div className="expressions-filters" role="group" aria-label="Filter expressions">
-            {(['all', 'idiom', 'phrase'] as const).map(value => <button key={value} className={`btn btn-sm ${filter === value ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setFilter(value)}>{value === 'all' ? 'All' : value === 'idiom' ? 'Idioms' : 'Phrases'}</button>)}
+            {(['all', 'idiom', 'phrase'] as const).map(value => <button key={value} className={`btn btn-sm ${filter === value ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setPage(0); setFilter(value); }}>{value === 'all' ? 'All' : value === 'idiom' ? 'Idioms' : 'Phrases'}</button>)}
           </div>
         </div>
-        <label className="expressions-search"><Search size={17} /><span className="sr-only">Search saved expressions</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search your expressions…" /></label>
-        {isLoading ? <div className="card expressions-empty"><div className="spinner" /><p>Loading saved expressions…</p></div> : filteredEntries.length === 0 ? (
-          <div className="card expressions-empty"><Quote size={28} /><h3>{entries.length === 0 ? 'Your library is ready' : 'No matching expressions'}</h3><p>{entries.length === 0 ? 'Look up an idiom or phrase above to start your collection.' : 'Try another search or switch the filter.'}</p></div>
-        ) : <div className="expressions-grid">{filteredEntries.map(entry => <article className="card expression-card" key={entry.id}>
+        <label className="expressions-search"><Search size={17} /><span className="sr-only">Search saved expressions</span><input value={search} onChange={event => { setPage(0); setSearch(event.target.value); }} placeholder="Search your expressions…" /></label>
+        {isLoading ? <div className="card expressions-empty"><div className="spinner" /><p>Loading saved expressions…</p></div> : entries.length === 0 ? (
+          <div className="card expressions-empty"><Quote size={28} /><h3>{total === 0 && !hasLibraryQuery ? 'Your library is ready' : 'No matching expressions'}</h3><p>{total === 0 && !hasLibraryQuery ? 'Look up an idiom or phrase above to start your collection.' : 'Try another search or switch the filter.'}</p></div>
+        ) : <div className="expressions-grid">{entries.map(entry => <article className="card expression-card" key={entry.id}>
           <div className="expression-card-heading"><div><span className="expression-type-label">{entry.type}</span><h3>{entry.expression}</h3></div><span className="expression-language">{entry.language.toUpperCase()}</span></div>
           <p className="expression-meaning">{entry.meaning}</p>
           <div className="expression-examples">{entry.examples.map(example => <p key={example.id}>“{example.example}”</p>)}</div>
         </article>)}</div>}
+        {!isLoading && total > 0 && <div className="expressions-pagination" aria-label="Expression library pagination">
+          <span>Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} of {total}</span>
+          <div>
+            <button className="btn btn-secondary btn-sm" onClick={() => setPage(current => Math.max(0, current - 1))} disabled={page === 0 || isLoading} aria-label="Previous page"><ArrowLeft size={15} />Previous</button>
+            <span>Page {page + 1} of {Math.max(1, Math.ceil(total / pageSize))}</span>
+            <button className="btn btn-secondary btn-sm" onClick={() => setPage(current => current + 1)} disabled={(page + 1) * pageSize >= total || isLoading} aria-label="Next page">Next<ArrowRight size={15} /></button>
+          </div>
+        </div>}
       </section>
+      </>}
     </div>
   );
 };

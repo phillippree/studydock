@@ -1,20 +1,38 @@
 import Database from 'better-sqlite3';
-import { ExpressionType, IdiomPhraseEntry, IdiomPhraseExample } from '../../../shared/contracts/idiomsPhrases';
+import { ExpressionType, IdiomPhraseEntry, IdiomPhraseExample, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt } from '../../../shared/contracts/idiomsPhrases';
 
 export class IdiomsPhrasesRepository {
   constructor(private readonly db: Database.Database) {}
 
-  public list(type?: ExpressionType): IdiomPhraseEntry[] {
-    const rows = (type
-      ? this.db.prepare(`SELECT id, expression, normalized_expression AS normalizedExpression, type, language, meaning, created_at AS createdAt, updated_at AS updatedAt FROM idioms_phrases_entries WHERE type = ? ORDER BY expression COLLATE NOCASE`).all(type)
-      : this.db.prepare(`SELECT id, expression, normalized_expression AS normalizedExpression, type, language, meaning, created_at AS createdAt, updated_at AS updatedAt FROM idioms_phrases_entries ORDER BY expression COLLATE NOCASE`).all()) as Array<Omit<IdiomPhraseEntry, 'examples'>>;
-    if (rows.length === 0) return [];
+  public list(query: Required<Pick<IdiomPhraseListQuery, 'offset' | 'limit'>> & Omit<IdiomPhraseListQuery, 'offset' | 'limit'>): IdiomPhraseListPage {
+    const conditions: string[] = [];
+    const params: Array<string | number> = [];
+    if (query.type) {
+      conditions.push('type = ?');
+      params.push(query.type);
+    }
+    const search = query.search?.trim().toLocaleLowerCase() || '';
+    if (search) {
+      conditions.push('(instr(lower(expression), ?) > 0 OR instr(lower(meaning), ?) > 0)');
+      params.push(search, search);
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const totalRow = this.db.prepare(`SELECT COUNT(*) AS total FROM idioms_phrases_entries ${where}`).get(...params) as { total: number };
+    const rows = this.db.prepare(`
+      SELECT id, expression, normalized_expression AS normalizedExpression, type, language, meaning,
+             created_at AS createdAt, updated_at AS updatedAt
+      FROM idioms_phrases_entries ${where}
+      ORDER BY expression COLLATE NOCASE
+      LIMIT ? OFFSET ?
+    `).all(...params, query.limit, query.offset) as Array<Omit<IdiomPhraseEntry, 'examples'>>;
+    if (rows.length === 0) return { entries: [], total: totalRow.total };
 
     const examples = this.db.prepare(`
       SELECT id, entry_id AS entryId, example, position
       FROM idioms_phrases_examples
+      WHERE entry_id IN (${rows.map(() => '?').join(', ')})
       ORDER BY entry_id, position
-    `).all() as Array<IdiomPhraseExample & { entryId: string }>;
+    `).all(...rows.map(row => row.id)) as Array<IdiomPhraseExample & { entryId: string }>;
     const grouped = new Map<string, IdiomPhraseExample[]>();
     for (const item of examples) {
       const { entryId, ...example } = item;
@@ -22,7 +40,10 @@ export class IdiomsPhrasesRepository {
       bucket.push(example);
       grouped.set(entryId, bucket);
     }
-    return rows.map(row => ({ ...row, type: row.type as ExpressionType, examples: grouped.get(row.id) || [] }));
+    return {
+      entries: rows.map(row => ({ ...row, type: row.type as ExpressionType, examples: grouped.get(row.id) || [] })),
+      total: totalRow.total
+    };
   }
 
   public find(normalizedExpression: string, type: ExpressionType, language: string): IdiomPhraseEntry | null {
@@ -36,6 +57,33 @@ export class IdiomsPhrasesRepository {
       SELECT id, example, position FROM idioms_phrases_examples WHERE entry_id = ? ORDER BY position
     `).all(row.id) as IdiomPhraseExample[];
     return { ...row, type: row.type as ExpressionType, examples };
+  }
+
+  public getById(id: string): IdiomPhraseEntry | null {
+    const row = this.db.prepare(`
+      SELECT id, expression, normalized_expression AS normalizedExpression, type, language, meaning,
+             created_at AS createdAt, updated_at AS updatedAt
+      FROM idioms_phrases_entries WHERE id = ?
+    `).get(id) as Omit<IdiomPhraseEntry, 'examples'> | undefined;
+    if (!row) return null;
+    const examples = this.db.prepare(`
+      SELECT id, example, position FROM idioms_phrases_examples WHERE entry_id = ? ORDER BY position
+    `).all(id) as IdiomPhraseExample[];
+    return { ...row, type: row.type as ExpressionType, examples };
+  }
+
+  public getRandomQuizPrompt(type?: ExpressionType, excludeId?: string): IdiomPhraseQuizPrompt | null {
+    const row = this.db.prepare(`
+      SELECT id, expression, type, language
+      FROM idioms_phrases_entries
+      WHERE (? IS NULL OR type = ?)
+        AND (? IS NULL OR id != ?)
+      ORDER BY RANDOM()
+      LIMIT 1
+    `).get(type ?? null, type ?? null, excludeId ?? null, excludeId ?? null) as IdiomPhraseQuizPrompt | undefined;
+    if (row) return row;
+    if (excludeId) return this.getRandomQuizPrompt(type);
+    return null;
   }
 
   public save(input: {

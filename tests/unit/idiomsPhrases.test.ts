@@ -46,7 +46,7 @@ describe('Idioms & Phrases mode', () => {
     if (result.status !== 'saved') throw new Error('Expected saved result');
     expect(result.entry.examples).toHaveLength(2);
     expect(repository.find('break the ice', 'idiom', 'en')?.meaning).toContain('relaxed');
-    expect(repository.list()).toHaveLength(1);
+    expect(repository.list({ offset: 0, limit: 6 }).total).toBe(1);
   });
 
   it('accepts Gemini null suggestion when a recognized phrase has no correction', () => {
@@ -67,7 +67,7 @@ describe('Idioms & Phrases mode', () => {
       expression: 'blorp the moon', type: 'idiom', language: 'en', recognized: false, examples: [], suggestion: 'reach for the moon'
     });
     await expect(service.lookupAndSave('blorp the moon', 'idiom')).resolves.toMatchObject({ status: 'unrecognized', suggestion: 'reach for the moon' });
-    expect(repository.list()).toEqual([]);
+    expect(repository.list({ offset: 0, limit: 6 }).entries).toEqual([]);
   });
 
   it('returns the saved record for duplicates without another Gemini request', async () => {
@@ -85,7 +85,56 @@ describe('Idioms & Phrases mode', () => {
       expression: 'spill the beans', type: 'idiom', language: 'en', recognized: false, examples: []
     });
     await expect(service.lookupAndSave('spill the beans', 'idiom')).resolves.toMatchObject({ status: 'unrecognized' });
-    expect(repository.list()).toEqual([]);
+    expect(repository.list({ offset: 0, limit: 6 }).entries).toEqual([]);
+  });
+
+  it('returns a stable slice and total count for pagination', () => {
+    for (let index = 1; index <= 8; index++) {
+      const expression = `expression ${index.toString().padStart(2, '0')}`;
+      repository.save({
+        expression,
+        normalizedExpression: expression,
+        type: index % 2 === 0 ? 'phrase' : 'idiom',
+        language: 'en',
+        meaning: `Meaning ${index}`,
+        examples: [`Example ${index}`]
+      });
+    }
+
+    const page = repository.list({ offset: 3, limit: 3 });
+    expect(page.total).toBe(8);
+    expect(page.entries.map(entry => entry.expression)).toEqual(['expression 04', 'expression 05', 'expression 06']);
+  });
+
+  it('applies search and type filters before counting and paging', () => {
+    repository.save({ expression: 'break the ice', normalizedExpression: 'break the ice', type: 'idiom', language: 'en', meaning: 'Start a conversation', examples: ['They played a game.'] });
+    repository.save({ expression: 'ice breaker', normalizedExpression: 'ice breaker', type: 'phrase', language: 'en', meaning: 'A conversation starter', examples: ['She told a story.'] });
+    repository.save({ expression: 'hit the road', normalizedExpression: 'hit the road', type: 'idiom', language: 'en', meaning: 'Leave a place', examples: ['We left early.'] });
+
+    const page = repository.list({ type: 'idiom', search: 'ice', offset: 0, limit: 1 });
+    expect(page.total).toBe(1);
+    expect(page.entries.map(entry => entry.expression)).toEqual(['break the ice']);
+  });
+
+  it('selects quiz prompts by category without exposing answers and avoids the previous prompt', () => {
+    const first = repository.save({ expression: 'call it a day', normalizedExpression: 'call it a day', type: 'phrase', language: 'en', meaning: 'Stop working for the day.', examples: ['We called it a day.'] });
+    repository.save({ expression: 'under the weather', normalizedExpression: 'under the weather', type: 'phrase', language: 'en', meaning: 'Feeling ill.', examples: ['I am under the weather.'] });
+    repository.save({ expression: 'once in a blue moon', normalizedExpression: 'once in a blue moon', type: 'idiom', language: 'en', meaning: 'Very rarely.', examples: ['It happens once in a blue moon.'] });
+
+    const prompt = repository.getRandomQuizPrompt('phrase');
+    expect(prompt).not.toBeNull();
+    expect(prompt?.type).toBe('phrase');
+    expect(prompt).not.toHaveProperty('meaning');
+    expect(prompt).not.toHaveProperty('examples');
+
+    const nextPrompt = repository.getRandomQuizPrompt('phrase', prompt!.id);
+    expect(nextPrompt?.type).toBe('phrase');
+    expect(nextPrompt?.id).not.toBe(prompt?.id);
+    expect(repository.getById(first.id)?.meaning).toBe('Stop working for the day.');
+  });
+
+  it('returns no quiz prompt when the library is empty', () => {
+    expect(repository.getRandomQuizPrompt()).toBeNull();
   });
 
   it('rejects a response classified under a different requested type', () => {

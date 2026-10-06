@@ -1,4 +1,4 @@
-import { ExpressionType, IdiomPhraseEntry, LookupExpressionResult } from '../../../shared/contracts/idiomsPhrases';
+import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt, LookupExpressionResult } from '../../../shared/contracts/idiomsPhrases';
 import { GeminiClient } from '../../gemini/client';
 import { SettingsService } from '../../settings/service';
 import { buildExpressionLookupPrompt, buildExpressionSystemInstruction } from './prompt';
@@ -12,8 +12,21 @@ export class IdiomsPhrasesService {
     private readonly settings: SettingsService
   ) {}
 
-  public list(type?: ExpressionType): IdiomPhraseEntry[] {
-    return this.repository.list(type);
+  public list(query: IdiomPhraseListQuery = {}): IdiomPhraseListPage {
+    const offset = Number.isInteger(query.offset) && (query.offset || 0) >= 0 ? query.offset || 0 : 0;
+    const limit = Number.isInteger(query.limit) ? Math.min(Math.max(query.limit || 1, 1), 50) : 6;
+    const search = query.search?.trim().slice(0, 120);
+    return this.repository.list({ type: query.type, search, offset, limit });
+  }
+
+  public getRandomQuizPrompt(type?: ExpressionType, excludeId?: string): IdiomPhraseQuizPrompt | null {
+    return this.repository.getRandomQuizPrompt(type, excludeId);
+  }
+
+  public revealQuizEntry(id: string): IdiomPhraseEntry {
+    const entry = this.repository.getById(id);
+    if (!entry) throw new Error('This expression is no longer in your library.');
+    return entry;
   }
 
   public async lookupAndSave(expressionInput: string, type: ExpressionType, languageInput = 'en'): Promise<LookupExpressionResult> {

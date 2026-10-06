@@ -18,6 +18,25 @@ export interface IdiomPhraseEntry {
   updatedAt: string;
 }
 
+export interface IdiomPhraseListQuery {
+  type?: ExpressionType;
+  search?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface IdiomPhraseListPage {
+  entries: IdiomPhraseEntry[];
+  total: number;
+}
+
+export interface IdiomPhraseQuizPrompt {
+  id: string;
+  expression: string;
+  type: ExpressionType;
+  language: string;
+}
+
 export type LookupExpressionResult =
   | { status: 'saved'; entry: IdiomPhraseEntry }
   | { status: 'duplicate'; entry: IdiomPhraseEntry }

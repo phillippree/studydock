@@ -13,7 +13,7 @@ import {
   VerifyAndAddWordResult
 } from './vocab';
 import { WordQuizAnswer } from './wordQuiz';
-import { ExpressionType, IdiomPhraseEntry, LookupExpressionResult } from './idiomsPhrases';
+import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt, LookupExpressionResult } from './idiomsPhrases';
 
 export interface StudyDockAPI {
   // Modes
@@ -50,8 +50,10 @@ export interface StudyDockAPI {
   wordQuizRevealDefinition(wordId: string): Promise<WordQuizAnswer['definitions']>;
 
   // Idioms & Phrases mode
-  idiomsPhrasesList(type?: ExpressionType): Promise<IdiomPhraseEntry[]>;
+  idiomsPhrasesList(query?: IdiomPhraseListQuery): Promise<IdiomPhraseListPage>;
   idiomsPhrasesLookupAndSave(input: { expression: string; type: ExpressionType; language?: string }): Promise<LookupExpressionResult>;
+  idiomsPhrasesQuizGetRandom(type?: ExpressionType, excludeId?: string): Promise<IdiomPhraseQuizPrompt | null>;
+  idiomsPhrasesQuizReveal(id: string): Promise<IdiomPhraseEntry>;
 }
 
 declare global {

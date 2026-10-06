@@ -245,7 +245,7 @@ Adding a new vocabulary entry from **Add Word** asks Gemini to verify the term a
 
 ### Idioms & Phrases
 
-Choose **Idiom** or **Phrase**, enter an expression, and choose **Look up & Save**. Gemini verifies the expression and returns a meaning and natural example sentences. Recognized expressions are stored locally; unrecognized expressions are not saved. The library can be searched and filtered by type and remains available offline. New lookups require a configured Gemini key and internet access, and may incur API usage. Data is stored in the mode-owned `idioms_phrases_entries` and `idioms_phrases_examples` tables; the mode has its own prompt, validation, service, repository, migration, renderer, and IPC operations.
+Choose **Idiom** or **Phrase**, enter an expression, and choose **Look up & Save**. Gemini verifies the expression and returns a meaning and natural example sentences. Recognized expressions are stored locally; unrecognized expressions are not saved. The library can be searched, filtered by type, and browsed in six-entry pages while remaining available offline. Choose **Practice** to open the offline **Guess the meaning** quiz: the expression appears first, and its saved meaning and examples are loaded only after **Reveal meaning**. New lookups require a configured Gemini key and internet access, and may incur API usage. Data is stored in the mode-owned `idioms_phrases_entries` and `idioms_phrases_examples` tables; the mode has its own prompt, validation, service, repository, migration, renderer, and IPC operations.
 
 ---
 
