@@ -380,3 +380,7 @@ html, body, #root {
  :root { --bg-primary:#16191e; --bg-secondary:#20242b; --bg-tertiary:#2a3039; --bg-elevated:#2a3039; --bg-card:#20242b; --bg-card-hover:#2a3039; --bg-input:#20242b; --border-subtle:#3a424d; --border-default:#3a424d; --text-primary:#edf0f4; --text-secondary:#b4bdc8; --text-muted:#b4bdc8; --text-dim:#a3adba; --accent-primary:#8ed4ba; --accent-primary-hover:#a3dfc9; --success-text:#8ed4ba; --info-text:#8ed4ba; --warning-text:#efd08b; --error-text:#ffa2a2; }
  .btn-primary { color:#122b23; }
 }
+
+.gemini-summary { color: var(--text-secondary); font-size: 0.85rem; margin-top: 6px; }
+#gemini-settings-panel:not([hidden]) { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-default); }
+#gemini-settings-panel[hidden] { display: none; }

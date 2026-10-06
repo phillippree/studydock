@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getAllRegisteredModes } from './modeRegistry';
 import {
   BookOpen,
@@ -23,6 +23,8 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
   const modes = getAllRegisteredModes();
+  const [settingsExpanded, setSettingsExpanded] = useState(true);
+  const settingsInitialized = useRef(false);
   const [settings, setSettings] = useState<GeminiSettings | null>(null);
   const [keyInput, setKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
@@ -52,6 +54,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
       if (window.studydockBridge) {
         const s = await window.studydockBridge.getSettings();
         setSettings(s);
+        if (!settingsInitialized.current || !s.hasKey) {
+          setSettingsExpanded(!s.hasKey);
+          settingsInitialized.current = true;
+        }
         setSelectedModel(s.model || DEFAULT_GEMINI_MODEL);
         setSessionOnly(s.isSessionOnly);
       }
@@ -224,7 +230,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
 
       {/* Gemini Connection & Settings Section */}
       <div className="card" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: settingsExpanded ? '20px' : '6px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Sparkles size={22} color="var(--accent-primary)" />
             <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Gemini connection</h2>
@@ -242,9 +248,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
                 Key Not Set
               </span>
             )}
+            <button type="button" className="btn btn-secondary btn-sm" aria-expanded={settingsExpanded} aria-controls="gemini-settings-panel" onClick={() => setSettingsExpanded(open => !open)}>
+              {settingsExpanded ? 'Hide settings ▴' : 'Edit settings ▾'}
+            </button>
           </div>
         </div>
 
+        <p className="gemini-summary">
+          {modelOptions.find(model => model.id === selectedModel)?.name || selectedModel}
+          {' · '}{settings?.hasKey ? (settings.isSessionOnly ? 'Session only' : 'Encrypted on this device') : 'Add a key to get started'}
+        </p>
+        <div id="gemini-settings-panel" hidden={!settingsExpanded}>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.5 }}>
           StudyDock works completely offline with saved words. Fetching new definitions sends the selected word to the Gemini API. Your API key is encrypted on your machine using OS-backed secure storage.
         </p>
@@ -421,6 +435,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
             <div style={{ opacity: 0.9 }}>{testResult.message}</div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -220,3 +220,7 @@ Paste a key into the Gemini settings field and click **Test Connection**. The en
 ## Gemini model selection
 
 New installations default to `gemini-3.5-flash-lite`. Existing model preferences are preserved: if a legacy model fails, select a current model manually. **Refresh available models** queries Google using the entered key, or the saved key when the field is empty, without storing the entered key. The list filters for Gemini generateContent models suitable for text; listing does not guarantee generation access or structured-output support. Run **Test Connection** to verify generation access. Google restricts older 2.5 models for some projects. See https://ai.google.dev/gemini-api/docs/models.
+
+## Compact Gemini settings
+
+When a key is configured, the landing page initially shows a compact Gemini summary with the selected model and key storage status. **Edit settings** expands all existing controls; **Hide settings** collapses them. First-time setup and removing a saved key show the controls automatically. Key configured does not imply that a live connection test has succeeded.
