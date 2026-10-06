@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Brain, Eye, EyeOff, ArrowRight, AlertCircle, BookOpen } from 'lucide-react';
 import { VocabDefinition, VocabWord } from '../../../shared/contracts/vocab';
+import { WordLibrary } from '../vocab/WordLibrary';
 
 interface WordQuizPageProps {
   onNavigateHome: () => void;
@@ -12,6 +13,7 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
   const [revealed, setRevealed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   const loadNext = useCallback(async (excludeWordId?: string) => {
     setLoading(true);
@@ -43,11 +45,37 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
     }
   };
 
+  const selectLibraryWord = async (wordId: string) => {
+    setLoading(true);
+    setError(null);
+    setDefinitions([]);
+    setRevealed(false);
+    try {
+      const selectedWord = await window.studydockBridge.wordQuizGetWord(wordId);
+      if (!selectedWord) {
+        setError('That word no longer has a saved definition. Choose another word or add a definition in Vocabulary.');
+        setWord(null);
+        return;
+      }
+      setWord(selectedWord);
+    } catch {
+      setError('Could not load that word for the quiz. Please try again.');
+      setWord(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="quiz-page">
       <div className="quiz-heading">
-        <span className="quiz-icon"><Brain size={22} /></span>
-        <div><h1>Word Quiz</h1><p>Think of the meaning, then reveal the answer.</p></div>
+        <div className="quiz-heading-title">
+          <span className="quiz-icon"><Brain size={22} /></span>
+          <div><h1>Word Quiz</h1><p>Think of the meaning, then reveal the answer.</p></div>
+        </div>
+        <button className="btn btn-secondary btn-sm" onClick={() => setIsLibraryOpen(true)}>
+          <BookOpen size={16} />Word Library
+        </button>
       </div>
 
       {loading ? (
@@ -86,6 +114,14 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
           {error && <p className="quiz-error" role="alert">{error}</p>}
         </section>
       )}
+
+      <WordLibrary
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+        onSelectWord={wordId => { void selectLibraryWord(wordId); }}
+        onWordListChanged={() => { if (!word) void loadNext(); }}
+        definedWordsOnly
+      />
     </div>
   );
 };

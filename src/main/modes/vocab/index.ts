@@ -60,6 +60,20 @@ export function registerVocabMode(
     return service.addWord(input);
   });
 
+  ipcMain.handle('vocab:verifyAndAddWord', async (event, input: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame) {
+      throw new Error('Unauthorized word verification request');
+    }
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new Error('Invalid word verification input');
+    }
+    const request = input as { word?: unknown; language?: unknown };
+    if (typeof request.word !== 'string' || (typeof request.language !== 'undefined' && typeof request.language !== 'string')) {
+      throw new Error('Invalid word verification input');
+    }
+    return service.verifyAndAddWord({ word: request.word, language: request.language });
+  });
+
   ipcMain.handle('vocab:editWord', async (_event, input) => {
     if (!input || typeof input.id !== 'string' || typeof input.displayWord !== 'string') {
       throw new Error('Invalid edit word input');

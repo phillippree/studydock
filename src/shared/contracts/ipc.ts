@@ -9,7 +9,8 @@ import {
   ImportWordsResult,
   VocabDefinition,
   VocabWord,
-  VocabWordWithDefinitions
+  VocabWordWithDefinitions,
+  VerifyAndAddWordResult
 } from './vocab';
 import { WordQuizAnswer } from './wordQuiz';
 
@@ -33,6 +34,7 @@ export interface StudyDockAPI {
   vocabGetAllWords(): Promise<Array<VocabWord & { definitionCount: number }>>;
   vocabGetWordDetails(wordId: string): Promise<VocabWordWithDefinitions | null>;
   vocabAddWord(input: AddWordInput): Promise<{ word: VocabWord; isDuplicate: boolean }>;
+  vocabVerifyAndAddWord(input: AddWordInput): Promise<VerifyAndAddWordResult>;
   vocabEditWord(input: EditWordInput): Promise<VocabWord>;
   vocabDeleteWord(wordId: string): Promise<{ success: boolean; deletedWord: VocabWord }>;
   vocabAddDefinition(input: AddDefinitionInput): Promise<VocabDefinition>;
@@ -43,6 +45,7 @@ export interface StudyDockAPI {
 
   // Word Quiz mode
   wordQuizGetRandomWord(excludeWordId?: string): Promise<VocabWord | null>;
+  wordQuizGetWord(wordId: string): Promise<VocabWord | null>;
   wordQuizRevealDefinition(wordId: string): Promise<WordQuizAnswer['definitions']>;
 }
 

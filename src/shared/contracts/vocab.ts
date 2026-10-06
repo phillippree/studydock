@@ -85,6 +85,11 @@ export interface AddWordInput {
   language?: string;
 }
 
+export type VerifyAndAddWordResult =
+  | { status: 'added'; word: VocabWord; definitions: VocabDefinition[] }
+  | { status: 'duplicate'; word: VocabWord }
+  | { status: 'unrecognized'; enteredWord: string; suggestedWord?: string };
+
 export interface EditWordInput {
   id: string;
   displayWord: string;

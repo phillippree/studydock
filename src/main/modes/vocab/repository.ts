@@ -136,6 +136,73 @@ export class VocabRepository {
     };
   }
 
+  public createWordWithDefinitions(
+    displayWord: string,
+    normalizedWord: string,
+    language: string,
+    definitions: Array<{
+      partOfSpeech: string;
+      definition: string;
+      examples: Array<{ example: string; voice: VocabExample['voice'] }>;
+      source: string;
+      modelIdentifier?: string;
+      promptVersion?: number;
+    }>
+  ): { word: VocabWord; definitions: VocabDefinition[] } {
+    const now = new Date().toISOString();
+    const wordId = `word_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const savedDefinitions: VocabDefinition[] = [];
+    const save = this.db.transaction(() => {
+      this.db.prepare(`
+        INSERT INTO vocab_words (id, display_word, normalized_word, language, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(wordId, displayWord, normalizedWord, language, now, now);
+
+      const insertDefinition = this.db.prepare(`
+        INSERT INTO vocab_definitions (
+          id, word_id, part_of_speech, definition, example, source, model_identifier, prompt_version, generated_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      definitions.forEach((item, index) => {
+        const definitionId = `def_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 7)}`;
+        const examples = item.examples.map((example, exampleIndex) => ({ ...example, position: exampleIndex + 1 }));
+        insertDefinition.run(
+          definitionId,
+          wordId,
+          item.partOfSpeech,
+          item.definition,
+          examples[0].example,
+          item.source,
+          item.modelIdentifier || null,
+          item.promptVersion || 1,
+          now,
+          now
+        );
+        this.insertExamples(definitionId, examples);
+        savedDefinitions.push({
+          id: definitionId,
+          wordId,
+          partOfSpeech: item.partOfSpeech as PartOfSpeech,
+          definition: item.definition,
+          example: examples[0].example,
+          examples,
+          source: item.source as VocabDefinition['source'],
+          modelIdentifier: item.modelIdentifier,
+          promptVersion: item.promptVersion || 1,
+          generatedAt: now,
+          updatedAt: now
+        });
+      });
+    });
+    save();
+
+    return {
+      word: { id: wordId, displayWord, normalizedWord, language, createdAt: now, updatedAt: now },
+      definitions: savedDefinitions
+    };
+  }
+
   public updateWord(
     id: string,
     displayWord: string,

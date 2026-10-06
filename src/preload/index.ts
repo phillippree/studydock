@@ -21,6 +21,7 @@ const api: StudyDockAPI = {
   vocabGetAllWords: () => ipcRenderer.invoke('vocab:getAllWords'),
   vocabGetWordDetails: (wordId) => ipcRenderer.invoke('vocab:getWordDetails', wordId),
   vocabAddWord: (input) => ipcRenderer.invoke('vocab:addWord', input),
+  vocabVerifyAndAddWord: (input) => ipcRenderer.invoke('vocab:verifyAndAddWord', input),
   vocabEditWord: (input) => ipcRenderer.invoke('vocab:editWord', input),
   vocabDeleteWord: (wordId) => ipcRenderer.invoke('vocab:deleteWord', wordId),
   vocabAddDefinition: (input) => ipcRenderer.invoke('vocab:addDefinition', input),
@@ -31,6 +32,7 @@ const api: StudyDockAPI = {
 
   // Word Quiz Mode
   wordQuizGetRandomWord: (excludeWordId) => ipcRenderer.invoke('wordQuiz:getRandomWord', excludeWordId),
+  wordQuizGetWord: (wordId) => ipcRenderer.invoke('wordQuiz:getWord', wordId),
   wordQuizRevealDefinition: (wordId) => ipcRenderer.invoke('wordQuiz:revealDefinition', wordId)
 };
 

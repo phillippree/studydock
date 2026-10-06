@@ -48,4 +48,15 @@ export class WordQuizRepository {
       examples: byDefinition.get(definition.id) || [{ example: definition.example, position: 1, voice: 'other' }]
     }));
   }
+
+  public getWord(wordId: string): VocabWord | null {
+    const row = this.db.prepare(`
+      SELECT w.id, w.display_word AS displayWord, w.normalized_word AS normalizedWord,
+             w.language, w.created_at AS createdAt, w.updated_at AS updatedAt
+      FROM vocab_words w
+      WHERE w.id = ?
+        AND EXISTS (SELECT 1 FROM vocab_definitions d WHERE d.word_id = w.id)
+    `).get(wordId) as VocabWord | undefined;
+    return row ?? null;
+  }
 }

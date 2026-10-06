@@ -227,9 +227,11 @@ The application shell, landing page cards, header navigation, and error boundary
 
 ### Word Quiz
 
-Word Quiz selects randomly from vocabulary entries that already have one or more saved definitions. It sends only the word to the renderer at first. When the user chooses **Reveal definition**, the main process reads and returns its saved meanings. Hiding the answer clears it from the screen state; selecting another word resets the reveal state. The mode has its own renderer and main-process entry points, reads the existing vocabulary tables, adds no duplicate word data or migrations, and does not call Gemini.
+Word Quiz selects randomly from vocabulary entries that already have one or more saved definitions. Its **Word Library** button also lets learners select a saved, defined word directly; the quiz loads only the word until **Reveal definition** is chosen. The main process reads and returns saved meanings on reveal. Hiding the answer clears it from the screen state; selecting another word resets the reveal state. The mode has its own renderer and main-process entry points, reads the existing vocabulary tables, adds no duplicate word data or migrations, and does not call Gemini.
 
 Vocabulary definitions include six generated example sentences labeled by grammatical voice when appropriate. They are stored in order in `vocab_definition_examples`; the original example column remains for compatibility. The migration preserves every existing example as the first entry. New or explicitly refreshed Gemini definitions request six distinct examples, while cached definitions do not trigger paid requests automatically.
+
+Adding a new vocabulary entry from **Add Word** asks Gemini to verify the term and generate its definition and examples before saving anything. Unrecognized terms are not added. This action requires a configured Gemini key, an internet connection, and may incur API usage. Existing library entries and word imports remain local operations.
 
 ---
 

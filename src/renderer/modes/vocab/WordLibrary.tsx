@@ -26,6 +26,7 @@ interface WordLibraryProps {
   onClose: () => void;
   onSelectWord: (wordId: string) => void;
   onWordListChanged: () => void;
+  definedWordsOnly?: boolean;
 }
 
 type LibraryTab = 'words' | 'import' | 'add';
@@ -34,7 +35,8 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
   isOpen,
   onClose,
   onSelectWord,
-  onWordListChanged
+  onWordListChanged,
+  definedWordsOnly = false
 }) => {
   const [activeTab, setActiveTab] = useState<LibraryTab>('words');
   const [words, setWords] = useState<Array<VocabWord & { definitionCount: number }>>([]);
@@ -44,6 +46,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
   // Add word state
   const [newWordText, setNewWordText] = useState('');
   const [addFeedback, setAddFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isVerifyingWord, setIsVerifyingWord] = useState(false);
 
   // Edit word state
   const [editingWord, setEditingWord] = useState<VocabWord | null>(null);
@@ -89,7 +92,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
   const filteredWords = words.filter(w =>
     w.displayWord.toLowerCase().includes(searchQuery.toLowerCase()) ||
     w.normalizedWord.includes(searchQuery.toLowerCase())
-  );
+  ).filter(w => !definedWordsOnly || w.definitionCount > 0);
 
   const handleAddWord = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -100,12 +103,16 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
     }
 
     setAddFeedback(null);
+    setIsVerifyingWord(true);
     try {
-      const res = await window.studydockBridge.vocabAddWord({ word: trimmed });
-      if (res.isDuplicate) {
-        setAddFeedback({ type: 'error', text: `"${trimmed}" is already in your word library.` });
+      const result = await window.studydockBridge.vocabVerifyAndAddWord({ word: trimmed });
+      if (result.status === 'duplicate') {
+        setAddFeedback({ type: 'error', text: `"${result.word.displayWord}" is already in your word library.` });
+      } else if (result.status === 'unrecognized') {
+        const suggestion = result.suggestedWord ? ` Did you mean "${result.suggestedWord}"?` : '';
+        setAddFeedback({ type: 'error', text: `Gemini couldn't confirm "${result.enteredWord}" as a recognized word or phrase, so it wasn't added.${suggestion}` });
       } else {
-        setAddFeedback({ type: 'success', text: `"${trimmed}" added successfully!` });
+        setAddFeedback({ type: 'success', text: `"${result.word.displayWord}" added with ${result.definitions.length} definition${result.definitions.length === 1 ? '' : 's'} and six examples per definition.` });
         setNewWordText('');
         await loadWords();
         onWordListChanged();
@@ -113,6 +120,8 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to add word';
       setAddFeedback({ type: 'error', text: msg });
+    } finally {
+      setIsVerifyingWord(false);
     }
   };
 
@@ -581,6 +590,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
                   className="input-text"
                   placeholder="e.g. serendipity, epiphany, resilient"
                   value={newWordText}
+                  disabled={isVerifyingWord}
                   onChange={(e) => {
                     setNewWordText(e.target.value);
                     if (addFeedback) setAddFeedback(null);
@@ -594,9 +604,9 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                <button type="submit" className="btn btn-primary">
-                  <Plus size={16} />
-                  Add Word
+                <button type="submit" className="btn btn-primary" disabled={isVerifyingWord}>
+                  {isVerifyingWord ? <div className="spinner" /> : <Plus size={16} />}
+                  {isVerifyingWord ? 'Checking with Gemini…' : 'Add Word'}
                 </button>
               </div>
 

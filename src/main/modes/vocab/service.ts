@@ -13,11 +13,13 @@ import {
   VocabDefinition,
   VocabExample,
   VocabWord,
-  VocabWordWithDefinitions
+  VocabWordWithDefinitions,
+  VerifyAndAddWordResult
 } from '../../../shared/contracts/vocab';
 
 export class VocabService {
   private inFlightRequests = new Map<string, Promise<VocabWordWithDefinitions>>();
+  private inFlightVerifiedAdds = new Map<string, Promise<VerifyAndAddWordResult>>();
 
   constructor(
     private repository: VocabRepository,
@@ -241,6 +243,80 @@ export class VocabService {
       word: created,
       isDuplicate: false
     };
+  }
+
+  public async verifyAndAddWord(input: AddWordInput): Promise<VerifyAndAddWordResult> {
+    const displayWord = input.word.trim();
+    if (!displayWord) throw new Error('Word cannot be blank.');
+    if (displayWord.length > 100) throw new Error('Word or phrase cannot exceed 100 characters.');
+
+    const language = input.language?.trim() || 'en';
+    const normalizedWord = normalizeWord(displayWord);
+    const existing = this.repository.findWordByNormalized(normalizedWord, language);
+    if (existing) return { status: 'duplicate', word: existing };
+
+    const requestKey = `${language}:${normalizedWord}`;
+    const pending = this.inFlightVerifiedAdds.get(requestKey);
+    if (pending) return pending;
+
+    const request = this.executeVerifyAndAddWord(displayWord, normalizedWord, language);
+    this.inFlightVerifiedAdds.set(requestKey, request);
+    try {
+      return await request;
+    } finally {
+      if (this.inFlightVerifiedAdds.get(requestKey) === request) {
+        this.inFlightVerifiedAdds.delete(requestKey);
+      }
+    }
+  }
+
+  private async executeVerifyAndAddWord(
+    displayWord: string,
+    normalizedWord: string,
+    language: string
+  ): Promise<VerifyAndAddWordResult> {
+    if (!this.gemini.getApiKey()) {
+      throw new Error('Add a Gemini API key in Home settings before verifying a new word.');
+    }
+
+    const model = this.settings.getModel();
+    const response = await this.gemini.generateStructured({
+      prompt: buildVocabUserPrompt({ word: displayWord, language }),
+      systemInstruction: buildVocabSystemInstruction(),
+      modelOverride: model,
+      schemaValidator: raw => validateAndNormalizeVocabResponse(raw, normalizedWord, language)
+    });
+
+    if (!response.recognized) {
+      return { status: 'unrecognized', enteredWord: displayWord };
+    }
+    if (normalizeWord(response.word) !== normalizedWord) {
+      return { status: 'unrecognized', enteredWord: displayWord, suggestedWord: response.word };
+    }
+
+    const existing = this.repository.findWordByNormalized(normalizedWord, language);
+    if (existing) return { status: 'duplicate', word: existing };
+
+    try {
+      const saved = this.repository.createWordWithDefinitions(
+        displayWord,
+        normalizedWord,
+        language,
+        response.senses.map(sense => ({
+          partOfSpeech: sense.partOfSpeech,
+          definition: sense.definition,
+          examples: sense.examples,
+          source: 'gemini',
+          modelIdentifier: model,
+          promptVersion: VOCAB_PROMPT_VERSION
+        }))
+      );
+      return { status: 'added', ...saved };
+    } catch (error: unknown) {
+      const racedDuplicate = this.repository.findWordByNormalized(normalizedWord, language);
+      if (racedDuplicate) return { status: 'duplicate', word: racedDuplicate };
+      throw error;
+    }
   }
 
   public async editWord(input: EditWordInput): Promise<VocabWord> {

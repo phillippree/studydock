@@ -80,6 +80,15 @@ describe('Word Quiz repository', () => {
     expect(repository.getRandomWord()).toBeNull();
   });
 
+  it('loads a selected quiz word without returning its definitions', () => {
+    addWord('word-1', 'lucid', 'Clear and easy to understand.');
+    addWord('word-2', 'ephemeral');
+
+    expect(repository.getWord('word-1')).toMatchObject({ id: 'word-1', displayWord: 'lucid' });
+    expect(repository.getWord('word-2')).toBeNull();
+    expect(repository.getWord('missing-word')).toBeNull();
+  });
+
   it('avoids the previous word when another defined word is available', () => {
     addWord('word-1', 'lucid', 'Clear and easy to understand.');
     addWord('word-2', 'vivid', 'Producing strong, clear images.');

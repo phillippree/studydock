@@ -21,6 +21,13 @@ export function registerWordQuizMode(db: Database.Database): void {
     return repository.getRandomWord(excludeWordId as string | undefined);
   });
 
+  ipcMain.handle('wordQuiz:getWord', (event, wordId: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame || typeof wordId !== 'string' || wordId.length === 0 || wordId.length > 200) {
+      throw new Error('Invalid Word Quiz word ID');
+    }
+    return repository.getWord(wordId);
+  });
+
   ipcMain.handle('wordQuiz:revealDefinition', (event, wordId: unknown) => {
     if (event.senderFrame !== event.sender.mainFrame || typeof wordId !== 'string' || wordId.length === 0 || wordId.length > 200) {
       throw new Error('Invalid Word Quiz word ID');

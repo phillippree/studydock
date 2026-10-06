@@ -387,7 +387,8 @@ html, body, #root {
 
 /* Word Quiz */
 .quiz-page { width: min(820px, 100%); min-height: 100%; margin: 0 auto; padding: 36px 24px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
-.quiz-heading { display: flex; align-items: center; gap: 14px; }
+.quiz-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.quiz-heading-title { display: flex; align-items: center; gap: 14px; }
 .quiz-heading h1 { font-size: 1.55rem; font-weight: 600; }
 .quiz-heading p { color: var(--text-secondary); margin-top: 3px; }
 .quiz-icon { width: 46px; height: 46px; display: grid; place-items: center; flex: 0 0 auto; border-radius: var(--radius-md); color: var(--accent-primary); background: var(--info-bg); }

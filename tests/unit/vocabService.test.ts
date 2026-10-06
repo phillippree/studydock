@@ -170,4 +170,69 @@ describe('Vocabulary Service Logic and Resilience', () => {
     expect(repo.findWordByNormalized('perspicacious', 'en')?.id).toBe(added.word.id);
     expect(repo.getDefinitionsForWord(added.word.id)).toEqual([]);
   });
+
+  it('verifies a new word with Gemini and saves its definitions and examples', async () => {
+    const wordCountBefore = repo.getWordsCount();
+    vi.spyOn(mockGemini, 'generateStructured').mockResolvedValueOnce({
+      word: 'perspicacious',
+      language: 'en',
+      recognized: true,
+      senses: [{
+        partOfSpeech: 'adjective',
+        definition: 'Having a ready insight into and understanding of things.',
+        examples: Array.from({ length: 6 }, (_, index) => ({
+          example: `The perspicacious editor caught the subtle error in example ${index + 1}.`,
+          voice: index === 1 ? 'passive' : 'active' as const
+        }))
+      }]
+    });
+
+    const result = await service.verifyAndAddWord({ word: '  perspicacious  ' });
+
+    expect(result.status).toBe('added');
+    if (result.status !== 'added') throw new Error('Expected the verified word to be added.');
+    expect(result.word.displayWord).toBe('perspicacious');
+    expect(result.definitions[0].examples).toHaveLength(6);
+    expect(repo.getWordsCount()).toBe(wordCountBefore + 1);
+    expect(repo.getDefinitionsForWord(result.word.id)[0].examples).toHaveLength(6);
+  });
+
+  it('does not add an unrecognized term', async () => {
+    vi.spyOn(mockGemini, 'generateStructured').mockResolvedValueOnce({
+      word: 'xyzqwerty987', language: 'en', recognized: false, senses: []
+    });
+
+    const result = await service.verifyAndAddWord({ word: 'xyzqwerty987' });
+
+    expect(result.status).toBe('unrecognized');
+    expect(repo.findWordByNormalized('xyzqwerty987', 'en')).toBeNull();
+  });
+
+  it('requires a configured Gemini key before verifying a new term', async () => {
+    vi.spyOn(mockGemini, 'getApiKey').mockReturnValueOnce(null);
+    const generateSpy = vi.spyOn(mockGemini, 'generateStructured');
+
+    await expect(service.verifyAndAddWord({ word: 'perspicacious' })).rejects.toThrow(/Add a Gemini API key/);
+    expect(generateSpy).not.toHaveBeenCalled();
+    expect(repo.findWordByNormalized('perspicacious', 'en')).toBeNull();
+  });
+
+  it('does not call Gemini for a word already in the library', async () => {
+    const generateSpy = vi.spyOn(mockGemini, 'generateStructured');
+    const result = await service.verifyAndAddWord({ word: '  LUCID ' });
+
+    expect(result.status).toBe('duplicate');
+    expect(generateSpy).not.toHaveBeenCalled();
+  });
+
+  it('rolls back a word if its definition examples fail to persist', () => {
+    expect(() => repo.createWordWithDefinitions('transactional', 'transactional', 'en', [{
+      partOfSpeech: 'noun',
+      definition: 'A transactional test value.',
+      examples: [{ example: 'This example should fail during insertion.', voice: 'invalid' as never }],
+      source: 'gemini'
+    }])).toThrow();
+
+    expect(repo.findWordByNormalized('transactional', 'en')).toBeNull();
+  });
 });
