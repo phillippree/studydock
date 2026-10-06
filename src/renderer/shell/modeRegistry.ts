@@ -1,9 +1,9 @@
 import React from 'react';
-import { ModeDescriptor } from '../../shared/contracts/modes';
+import { IDIOMS_PHRASES_MODE, ModeDescriptor } from '../../shared/contracts/modes';
 
 export interface RegisteredMode {
   descriptor: ModeDescriptor;
-  component: React.LazyExoticComponent<React.ComponentType<{ onNavigateHome: () => void }>>;
+  component: React.LazyExoticComponent<React.ComponentType<{ onNavigateHome: () => void }>> | null;
 }
 
 export const modeRegistry: Record<string, RegisteredMode> = {
@@ -26,6 +26,10 @@ export const modeRegistry: Record<string, RegisteredMode> = {
       order: 2
     },
     component: React.lazy(() => import('../modes/word-quiz'))
+  },
+  'idioms-phrases': {
+    descriptor: IDIOMS_PHRASES_MODE,
+    component: null
   }
 };
 
@@ -35,6 +39,11 @@ export function getAllRegisteredModes(): ModeDescriptor[] {
     .sort((a, b) => a.order - b.order);
 }
 
+export function getAvailableModes(): ModeDescriptor[] {
+  return getAllRegisteredModes().filter(mode => !mode.comingSoon);
+}
+
 export function getModeComponent(modeId: string) {
-  return modeRegistry[modeId]?.component || null;
+  const mode = modeRegistry[modeId];
+  return mode && !mode.descriptor.comingSoon ? mode.component : null;
 }

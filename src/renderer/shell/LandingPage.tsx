@@ -3,6 +3,7 @@ import { getAllRegisteredModes } from './modeRegistry';
 import {
   BookOpen,
   Brain,
+  Quote,
   ArrowRight,
   Key,
   ShieldCheck,
@@ -180,8 +181,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
           {modes.map(mode => (
             <div
               key={mode.id}
-              className="card card-interactive"
-              onClick={() => onOpenMode(mode.id)}
+              className={`card${mode.comingSoon ? '' : ' card-interactive'}`}
+              onClick={mode.comingSoon ? undefined : () => onOpenMode(mode.id)}
+              aria-disabled={mode.comingSoon || undefined}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -203,9 +205,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
                     justifyContent: 'center',
                     color: 'var(--accent-primary)'
                   }}>
-                    {mode.iconName === 'Brain' ? <Brain size={22} /> : <BookOpen size={22} />}
+                    {mode.iconName === 'Brain' ? <Brain size={22} /> : mode.iconName === 'Quote' ? <Quote size={22} /> : <BookOpen size={22} />}
                   </div>
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{mode.displayName}</h3>
+                  {mode.comingSoon && <span className="badge badge-warning">Coming soon</span>}
                 </div>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                   {mode.description}
@@ -213,7 +216,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
               </div>
 
               <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button
+                {!mode.comingSoon && <button
                   className="btn btn-primary"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -222,7 +225,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
                 >
                   <span>Open {mode.displayName.toLowerCase()}</span>
                   <ArrowRight size={16} />
-                </button>
+                </button>}
               </div>
             </div>
           ))}

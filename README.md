@@ -2,7 +2,7 @@
 
 **StudyDock** is an offline-first desktop personal learning hub built with **Electron**, **TypeScript**, **React**, **Vite**, **SQLite**, and the **Google Gemini SDK**.
 
-The application features an extensible, modular architecture where independent learning modes can be plugged in without modifying existing mode implementation files. **Vocabulary** and **Word Quiz** use the same local word library.
+The application features an extensible, modular architecture where independent learning modes can be plugged in without modifying existing mode implementation files. **Vocabulary** and **Word Quiz** use the same local word library. **Idioms & Phrases** is listed as a coming-soon placeholder.
 
 ---
 

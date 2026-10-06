@@ -8,7 +8,7 @@ import { geminiClient } from './gemini/client';
 import { settingsService } from './settings/service';
 import { registerVocabMode, vocabModeDescriptor } from './modes/vocab';
 import { registerWordQuizMode, wordQuizModeDescriptor } from './modes/word-quiz';
-import { ModeDescriptor } from '../shared/contracts/modes';
+import { IDIOMS_PHRASES_MODE, ModeDescriptor } from '../shared/contracts/modes';
 
 // Set application identity
 app.name = 'StudyDock';
@@ -20,7 +20,8 @@ export function getMainWindow(): BrowserWindow | null {
 
 const REGISTERED_MODES: ModeDescriptor[] = [
   vocabModeDescriptor,
-  wordQuizModeDescriptor
+  wordQuizModeDescriptor,
+  IDIOMS_PHRASES_MODE
 ];
 
 async function createWindow(): Promise<BrowserWindow> {

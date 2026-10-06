@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { getAllRegisteredModes } from './modeRegistry';
+import { getAvailableModes } from './modeRegistry';
 import { BookOpen, Brain, ChevronDown, Check, Home, Layers } from 'lucide-react';
 
 interface ModePickerProps {
@@ -10,7 +10,7 @@ interface ModePickerProps {
 export const ModePicker: React.FC<ModePickerProps> = ({ currentModeId, onSelectMode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const modes = getAllRegisteredModes();
+  const modes = getAvailableModes();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
