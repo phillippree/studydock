@@ -374,7 +374,7 @@ html, body, #root {
 .brand-title { background: none; border: none; font-family: inherit; }
 .card { box-shadow: none; backdrop-filter: none; border-radius: 12px; }
 .badge { text-transform: none; letter-spacing: 0; font-weight: 500; }
-.app-footer { padding: 12px 24px; border-top: 1px solid var(--border-default); color: var(--text-secondary); font-size: 12px; background: var(--bg-secondary); }
+.app-footer { padding: 12px 24px; border-top: 1px solid var(--border-default); color: var(--text-secondary); font-size: 12px; background: var(--bg-secondary); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .input-text[type=password], .input-text[type=text] { padding-right: 42px; }
 @media (prefers-color-scheme: dark) {
  :root { --bg-primary:#16191e; --bg-secondary:#20242b; --bg-tertiary:#2a3039; --bg-elevated:#2a3039; --bg-card:#20242b; --bg-card-hover:#2a3039; --bg-input:#20242b; --border-subtle:#3a424d; --border-default:#3a424d; --text-primary:#edf0f4; --text-secondary:#b4bdc8; --text-muted:#b4bdc8; --text-dim:#a3adba; --accent-primary:#8ed4ba; --accent-primary-hover:#a3dfc9; --success-text:#8ed4ba; --info-text:#8ed4ba; --warning-text:#efd08b; --error-text:#ffa2a2; }

@@ -4,6 +4,7 @@ import { ModePicker } from './ModePicker';
 import { ErrorBoundary } from './ErrorBoundary';
 import { getModeComponent } from './modeRegistry';
 import { Compass } from 'lucide-react';
+import packageJson from '../../../package.json';
 
 export const App: React.FC = () => {
   const [currentModeId, setCurrentModeId] = useState<string | null>(null);
@@ -56,7 +57,10 @@ export const App: React.FC = () => {
           </ErrorBoundary>
         )}
       </main>
-      <footer className="app-footer">Local learning libraries · Gemini for new lookups</footer>
+      <footer className="app-footer">
+        <span>Local learning libraries · Gemini for new lookups</span>
+        <span>Version {packageJson.version}</span>
+      </footer>
     </div>
   );
 };
