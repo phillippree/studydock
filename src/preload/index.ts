@@ -33,7 +33,10 @@ const api: StudyDockAPI = {
   // Word Quiz Mode
   wordQuizGetRandomWord: (excludeWordId) => ipcRenderer.invoke('wordQuiz:getRandomWord', excludeWordId),
   wordQuizGetWord: (wordId) => ipcRenderer.invoke('wordQuiz:getWord', wordId),
-  wordQuizRevealDefinition: (wordId) => ipcRenderer.invoke('wordQuiz:revealDefinition', wordId)
+  wordQuizRevealDefinition: (wordId) => ipcRenderer.invoke('wordQuiz:revealDefinition', wordId),
+  // Idioms & Phrases Mode
+  idiomsPhrasesList: (type) => ipcRenderer.invoke('idiomsPhrases:list', type),
+  idiomsPhrasesLookupAndSave: (input) => ipcRenderer.invoke('idiomsPhrases:lookupAndSave', input)
 };
 
 contextBridge.exposeInMainWorld('studydockBridge', api);

@@ -2,19 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { getAllRegisteredModes, getAvailableModes, getModeComponent } from '../../src/renderer/shell/modeRegistry';
 
 describe('learning mode registry', () => {
-  it('lists Idioms & Phrases as coming soon without making it selectable', () => {
-    const placeholder = getAllRegisteredModes().find(mode => mode.id === 'idioms-phrases');
+  it('lists Idioms & Phrases as an available independent mode', () => {
+    const mode = getAllRegisteredModes().find(mode => mode.id === 'idioms-phrases');
 
-    expect(placeholder).toMatchObject({
+    expect(mode).toMatchObject({
       displayName: 'Idioms & Phrases',
-      comingSoon: true
+      description: 'Look up expressions and build your local collection.'
     });
-    expect(getAvailableModes().some(mode => mode.id === 'idioms-phrases')).toBe(false);
-    expect(getModeComponent('idioms-phrases')).toBeNull();
+    expect(getAvailableModes().some(item => item.id === 'idioms-phrases')).toBe(true);
+    expect(getModeComponent('idioms-phrases')).not.toBeNull();
   });
 
   it('keeps the implemented modes available', () => {
-    expect(getAvailableModes().map(mode => mode.id)).toEqual(['vocab', 'word-quiz']);
+    expect(getAvailableModes().map(mode => mode.id)).toEqual(['vocab', 'word-quiz', 'idioms-phrases']);
     expect(getModeComponent('word-quiz')).not.toBeNull();
   });
 });

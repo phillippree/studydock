@@ -27,7 +27,7 @@ export class WordQuizRepository {
       FROM vocab_definitions
       WHERE word_id = ?
       ORDER BY id ASC
-    `).all(wordId) as Array<Omit<VocabDefinition, 'examples'>>;
+    `).all(wordId) as Array<Omit<VocabDefinition, 'examples' | 'synonyms'>>;
     if (!definitions.length) return [];
 
     const examples = this.db.prepare(`
@@ -43,9 +43,22 @@ export class WordQuizRepository {
       grouped.push(example);
       byDefinition.set(definitionId, grouped);
     }
+    const synonyms = this.db.prepare(`
+      SELECT definition_id AS definitionId, synonym
+      FROM vocab_definition_synonyms
+      WHERE definition_id IN (SELECT id FROM vocab_definitions WHERE word_id = ?)
+      ORDER BY definition_id, position
+    `).all(wordId) as Array<{ definitionId: string; synonym: string }>;
+    const synonymsByDefinition = new Map<string, string[]>();
+    for (const item of synonyms) {
+      const grouped = synonymsByDefinition.get(item.definitionId) || [];
+      grouped.push(item.synonym);
+      synonymsByDefinition.set(item.definitionId, grouped);
+    }
     return definitions.map(definition => ({
       ...definition,
-      examples: byDefinition.get(definition.id) || [{ example: definition.example, position: 1, voice: 'other' }]
+      examples: byDefinition.get(definition.id) || [{ example: definition.example, position: 1, voice: 'other' }],
+      synonyms: synonymsByDefinition.get(definition.id) || []
     }));
   }
 

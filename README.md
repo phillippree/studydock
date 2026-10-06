@@ -2,7 +2,7 @@
 
 **StudyDock** is an offline-first desktop personal learning hub built with **Electron**, **TypeScript**, **React**, **Vite**, **SQLite**, and the **Google Gemini SDK**.
 
-The application features an extensible, modular architecture where independent learning modes can be plugged in without modifying existing mode implementation files. **Vocabulary** and **Word Quiz** use the same local word library. **Idioms & Phrases** is listed as a coming-soon placeholder.
+The application features an extensible, modular architecture with independent learning modes. **Vocabulary** and **Word Quiz** use the same local word library. **Idioms & Phrases** has its own verified lookup flow and local expression library.
 
 ---
 
@@ -227,11 +227,15 @@ The application shell, landing page cards, header navigation, and error boundary
 
 ### Word Quiz
 
-Word Quiz selects randomly from vocabulary entries that already have one or more saved definitions. Its **Word Library** button also lets learners select a saved, defined word directly; the quiz loads only the word until **Reveal definition** is chosen. The main process reads and returns saved meanings on reveal. Once revealed, **Refresh definition** explicitly regenerates the saved meanings and examples through Gemini. Hiding the answer clears it from the screen state; selecting another word resets the reveal state. The mode has its own renderer and main-process entry points, reads the existing vocabulary tables, adds no duplicate word data or migrations, and otherwise does not call Gemini.
+Word Quiz selects randomly from vocabulary entries that already have one or more saved definitions. Its **Word Library** button also lets learners select a saved, defined word directly; the quiz loads only the word until **Reveal definition** is chosen. The main process reads and returns saved meanings on reveal. Once revealed, **Refresh definition** explicitly regenerates the saved meanings, synonyms, and examples through Gemini. Hiding the answer clears it from the screen state; selecting another word resets the reveal state. The mode has its own renderer and main-process entry points, reads the existing vocabulary tables, adds no duplicate word data or migrations, and otherwise does not call Gemini.
 
-Vocabulary definitions include six generated example sentences labeled by grammatical voice when appropriate. They are stored in order in `vocab_definition_examples`; the original example column remains for compatibility. The migration preserves every existing example as the first entry. New or explicitly refreshed Gemini definitions request six distinct examples, while cached definitions do not trigger paid requests automatically.
+Vocabulary definitions include up to eight generated synonyms specific to each meaning, plus six example sentences labeled by grammatical voice when appropriate. Synonyms are stored per definition in `vocab_definition_synonyms`, and examples are stored in order in `vocab_definition_examples`; the original example column remains for compatibility. Migrations preserve existing definitions and examples; definitions already in the library start with an empty synonym list. New or explicitly refreshed Gemini definitions request synonyms and six distinct examples, while cached definitions do not trigger paid requests automatically.
 
-Adding a new vocabulary entry from **Add Word** asks Gemini to verify the term and generate its definition and examples before saving anything. Unrecognized terms are not added. This action requires a configured Gemini key, an internet connection, and may incur API usage. Existing library entries and word imports remain local operations.
+Adding a new vocabulary entry from **Add Word** asks Gemini to verify the term and generate its definitions, synonyms, and examples before saving anything. If Gemini recognizes a likely alternate spelling, StudyDock offers it for the learner to choose and verifies the chosen spelling before saving. Unrecognized terms are not added, and lookup failures are shown as recoverable messages. This action requires a configured Gemini key, an internet connection, and may incur API usage. Existing library entries and word imports remain local operations.
+
+### Idioms & Phrases
+
+Choose **Idiom** or **Phrase**, enter an expression, and choose **Look up & Save**. Gemini verifies the expression and returns a meaning and natural example sentences. Recognized expressions are stored locally; unrecognized expressions are not saved. The library can be searched and filtered by type and remains available offline. New lookups require a configured Gemini key and internet access, and may incur API usage. Data is stored in the mode-owned `idioms_phrases_entries` and `idioms_phrases_examples` tables; the mode has its own prompt, validation, service, repository, migration, renderer, and IPC operations.
 
 ---
 

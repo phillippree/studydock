@@ -4,6 +4,7 @@ import { MigrationRunner } from '../../src/main/database/migrations';
 import { vocabMigrations } from '../../src/main/modes/vocab/migrations';
 import { migration001Initial } from '../../src/main/modes/vocab/migrations/001_initial';
 import { migration002DefinitionExamples } from '../../src/main/modes/vocab/migrations/002_definition_examples';
+import { migration003DefinitionSynonyms } from '../../src/main/modes/vocab/migrations/003_definition_synonyms';
 import { VocabRepository } from '../../src/main/modes/vocab/repository';
 
 describe('Database Migrations and Starter Data', () => {
@@ -60,6 +61,7 @@ describe('Database Migrations and Starter Data', () => {
     const original = db.prepare(`SELECT id, example FROM vocab_definitions WHERE word_id = ?`).get(word.id) as { id: string; example: string };
 
     runner.runMigrations([migration002DefinitionExamples]);
+    runner.runMigrations([migration003DefinitionSynonyms]);
     const migrated = new VocabRepository(db).getDefinitionsForWord(word.id)[0];
 
     expect(migrated.examples).toEqual([{
@@ -68,6 +70,20 @@ describe('Database Migrations and Starter Data', () => {
       position: 1,
       voice: 'other'
     }]);
+  });
+
+  it('adds per-definition synonym storage without altering existing definitions', () => {
+    const runner = new MigrationRunner(db);
+    runner.runMigrations([migration001Initial, migration002DefinitionExamples]);
+    const word = db.prepare(`SELECT id FROM vocab_words WHERE normalized_word = 'resilient'`).get() as { id: string };
+    const before = db.prepare(`SELECT id, definition FROM vocab_definitions WHERE word_id = ? ORDER BY id`).all(word.id) as Array<{ id: string; definition: string }>;
+
+    runner.runMigrations([migration003DefinitionSynonyms]);
+    const after = new VocabRepository(db).getDefinitionsForWord(word.id);
+
+    expect(after).toHaveLength(before.length);
+    expect(after[0].definition).toBe(before[0].definition);
+    expect(after[0].synonyms).toEqual([]);
   });
 
   it('enforces cascade deletion of definitions when word is deleted', () => {

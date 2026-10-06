@@ -37,6 +37,12 @@ describe('Word Quiz repository', () => {
         position INTEGER NOT NULL,
         voice TEXT NOT NULL
       );
+      CREATE TABLE vocab_definition_synonyms (
+        id TEXT PRIMARY KEY,
+        definition_id TEXT NOT NULL REFERENCES vocab_definitions(id) ON DELETE CASCADE,
+        synonym TEXT NOT NULL,
+        position INTEGER NOT NULL
+      );
     `);
     repository = new WordQuizRepository(db);
   });
@@ -59,6 +65,10 @@ describe('Word Quiz repository', () => {
         INSERT INTO vocab_definition_examples (id, definition_id, example, position, voice)
         VALUES (?, ?, ?, 1, 'active')
       `).run(`example-${id}`, `definition-${id}`, `Example for ${displayWord}.`);
+      db.prepare(`
+        INSERT INTO vocab_definition_synonyms (id, definition_id, synonym, position)
+        VALUES (?, ?, ?, 1)
+      `).run(`synonym-${id}`, `definition-${id}`, `similar to ${displayWord}`);
     }
   }
 
@@ -119,6 +129,7 @@ describe('Word Quiz repository', () => {
           position: 1,
           voice: 'active'
         }],
+        synonyms: ['similar to lucid'],
         source: 'local'
       }
     ]);

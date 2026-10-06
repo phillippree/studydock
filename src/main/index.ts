@@ -8,7 +8,8 @@ import { geminiClient } from './gemini/client';
 import { settingsService } from './settings/service';
 import { registerVocabMode, vocabModeDescriptor } from './modes/vocab';
 import { registerWordQuizMode, wordQuizModeDescriptor } from './modes/word-quiz';
-import { IDIOMS_PHRASES_MODE, ModeDescriptor } from '../shared/contracts/modes';
+import { idiomsPhrasesModeDescriptor, registerIdiomsPhrasesMode } from './modes/idioms-phrases';
+import { ModeDescriptor } from '../shared/contracts/modes';
 
 // Set application identity
 app.name = 'StudyDock';
@@ -21,7 +22,7 @@ export function getMainWindow(): BrowserWindow | null {
 const REGISTERED_MODES: ModeDescriptor[] = [
   vocabModeDescriptor,
   wordQuizModeDescriptor,
-  IDIOMS_PHRASES_MODE
+  idiomsPhrasesModeDescriptor
 ];
 
 async function createWindow(): Promise<BrowserWindow> {
@@ -135,9 +136,11 @@ async function initializeApp(): Promise<void> {
   const migrationRunner = new MigrationRunner(db);
   const vocabMode = registerVocabMode(db, geminiClient, settingsService);
   registerWordQuizMode(db);
+  const idiomsPhrasesMode = registerIdiomsPhrasesMode(db, geminiClient, settingsService);
 
   migrationRunner.runMigrations([
-    ...vocabMode.migrations
+    ...vocabMode.migrations,
+    ...idiomsPhrasesMode.migrations
   ]);
 
   // Register settings & mode registry IPC handlers

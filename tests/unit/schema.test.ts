@@ -20,6 +20,7 @@ describe('Gemini Vocabulary Response Validation', () => {
         {
           partOfSpeech: 'adjective',
           definition: 'Clear and easy to understand.',
+          synonyms: ['intelligible', 'clear'],
           examples: examples('Lucid')
         }
       ]
@@ -33,6 +34,7 @@ describe('Gemini Vocabulary Response Validation', () => {
     expect(validated.senses[0].definition).toBe('Clear and easy to understand.');
     expect(validated.senses[0].examples).toHaveLength(6);
     expect(validated.senses[0].examples[1].voice).toBe('passive');
+    expect(validated.senses[0].synonyms).toEqual(['intelligible', 'clear']);
   });
 
   it('validates and handles an unrecognized word', () => {
@@ -78,7 +80,7 @@ describe('Gemini Vocabulary Response Validation', () => {
     expect(() => validateAndNormalizeVocabResponse(raw, 'lucid', 'en')).toThrow();
   });
 
-  it('rejects completely mismatched words', () => {
+  it('returns correction suggestions when Gemini recognizes a different canonical spelling', () => {
     const raw = {
       word: 'banana',
       language: 'en',
@@ -92,9 +94,24 @@ describe('Gemini Vocabulary Response Validation', () => {
       ]
     };
 
-    expect(() => validateAndNormalizeVocabResponse(raw, 'resilient', 'en')).toThrow(
-      /does not match requested word/
-    );
+    expect(validateAndNormalizeVocabResponse(raw, 'resilient', 'en')).toMatchObject({
+      recognized: false,
+      senses: [],
+      suggestions: ['banana']
+    });
+  });
+
+  it('normalizes Gemini spelling suggestions without saving any generated senses', () => {
+    const raw = {
+      word: 'commiserating', language: 'en', recognized: true,
+      suggestions: ['commiserating', 'commiserate'],
+      senses: [{ partOfSpeech: 'verb', definition: 'To feel sympathy for another person.', synonyms: ['console'], examples: examples('They') }]
+    };
+    expect(validateAndNormalizeVocabResponse(raw, 'comisserating', 'en')).toMatchObject({
+      recognized: false,
+      senses: [],
+      suggestions: ['commiserating', 'commiserate']
+    });
   });
 
   it('rejects a response that does not contain six distinct examples per sense', () => {
@@ -110,5 +127,13 @@ describe('Gemini Vocabulary Response Validation', () => {
     };
 
     expect(() => validateAndNormalizeVocabResponse(raw, 'lucid', 'en')).toThrow(/exactly six examples/);
+  });
+
+  it('rejects duplicate synonyms ignoring case', () => {
+    const raw = {
+      word: 'lucid', language: 'en', recognized: true,
+      senses: [{ partOfSpeech: 'adjective', definition: 'Clear and easy to understand.', synonyms: ['clear', 'Clear'], examples: examples('Lucid') }]
+    };
+    expect(() => validateAndNormalizeVocabResponse(raw, 'lucid', 'en')).toThrow(/distinct synonyms/);
   });
 });

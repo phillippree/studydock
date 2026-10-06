@@ -13,6 +13,7 @@ import {
   VerifyAndAddWordResult
 } from './vocab';
 import { WordQuizAnswer } from './wordQuiz';
+import { ExpressionType, IdiomPhraseEntry, LookupExpressionResult } from './idiomsPhrases';
 
 export interface StudyDockAPI {
   // Modes
@@ -30,7 +31,7 @@ export interface StudyDockAPI {
   // Vocabulary Mode Operations
   vocabGetRandomWord(options?: { excludeWordId?: string }): Promise<VocabWordWithDefinitions | null>;
   vocabFetchDefinition(wordId: string, forceRefresh?: boolean): Promise<VocabWordWithDefinitions>;
-  vocabSaveDefinitionRetry(wordId: string, senses: Array<{ partOfSpeech: string; definition: string; example: string; examples?: VocabDefinition['examples']; source?: string }>): Promise<VocabWordWithDefinitions>;
+  vocabSaveDefinitionRetry(wordId: string, senses: Array<{ partOfSpeech: string; definition: string; example: string; examples?: VocabDefinition['examples']; synonyms?: string[]; source?: string }>): Promise<VocabWordWithDefinitions>;
   vocabGetAllWords(): Promise<Array<VocabWord & { definitionCount: number }>>;
   vocabGetWordDetails(wordId: string): Promise<VocabWordWithDefinitions | null>;
   vocabAddWord(input: AddWordInput): Promise<{ word: VocabWord; isDuplicate: boolean }>;
@@ -47,6 +48,10 @@ export interface StudyDockAPI {
   wordQuizGetRandomWord(excludeWordId?: string): Promise<VocabWord | null>;
   wordQuizGetWord(wordId: string): Promise<VocabWord | null>;
   wordQuizRevealDefinition(wordId: string): Promise<WordQuizAnswer['definitions']>;
+
+  // Idioms & Phrases mode
+  idiomsPhrasesList(type?: ExpressionType): Promise<IdiomPhraseEntry[]>;
+  idiomsPhrasesLookupAndSave(input: { expression: string; type: ExpressionType; language?: string }): Promise<LookupExpressionResult>;
 }
 
 declare global {

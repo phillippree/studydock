@@ -9,6 +9,7 @@ import {
   EditDefinitionInput,
   EditWordInput,
   ExportData,
+  GeminiVocabResponse,
   ImportWordsResult,
   VocabDefinition,
   VocabExample,
@@ -147,6 +148,7 @@ export class VocabService {
             definition: sense.definition,
             example: sense.examples[0]?.example || '',
             examples: sense.examples.map((item, index) => ({ ...item, position: index + 1 })),
+            synonyms: sense.synonyms,
             source: 'gemini',
             modelIdentifier: model,
             promptVersion: VOCAB_PROMPT_VERSION
@@ -170,6 +172,7 @@ export class VocabService {
             definition: s.definition,
             example: s.examples[0]?.example || '',
             examples: s.examples.map((item, index) => ({ ...item, position: index + 1 })),
+            synonyms: s.synonyms,
             source: 'gemini',
             modelIdentifier: model,
             promptVersion: VOCAB_PROMPT_VERSION,
@@ -193,7 +196,7 @@ export class VocabService {
 
   public async saveDefinitionRetry(
     wordId: string,
-    senses: Array<{ partOfSpeech: string; definition: string; example: string; examples?: VocabExample[]; source?: string }>
+    senses: Array<{ partOfSpeech: string; definition: string; example: string; examples?: VocabExample[]; synonyms?: string[]; source?: string }>
   ): Promise<VocabWordWithDefinitions> {
     const word = this.repository.findWordById(wordId);
     if (!word) {
@@ -207,6 +210,7 @@ export class VocabService {
         definition: s.definition,
         example: s.example,
         examples: s.examples,
+        synonyms: s.synonyms,
         source: s.source || 'gemini',
         modelIdentifier: this.settings.getModel(),
         promptVersion: VOCAB_PROMPT_VERSION
@@ -280,18 +284,27 @@ export class VocabService {
     }
 
     const model = this.settings.getModel();
-    const response = await this.gemini.generateStructured({
-      prompt: buildVocabUserPrompt({ word: displayWord, language }),
-      systemInstruction: buildVocabSystemInstruction(),
-      modelOverride: model,
-      schemaValidator: raw => validateAndNormalizeVocabResponse(raw, normalizedWord, language)
-    });
+    let response: GeminiVocabResponse;
+    try {
+      response = await this.gemini.generateStructured({
+        prompt: buildVocabUserPrompt({ word: displayWord, language }),
+        systemInstruction: buildVocabSystemInstruction(),
+        modelOverride: model,
+        schemaValidator: raw => validateAndNormalizeVocabResponse(raw, normalizedWord, language)
+      });
+    } catch (error: unknown) {
+      return {
+        status: 'error',
+        enteredWord: displayWord,
+        message: error instanceof Error ? error.message : 'Gemini could not check this word. Please try again.'
+      };
+    }
 
     if (!response.recognized) {
+      if (response.suggestions?.length) {
+        return { status: 'suggestions', enteredWord: displayWord, suggestions: response.suggestions };
+      }
       return { status: 'unrecognized', enteredWord: displayWord };
-    }
-    if (normalizeWord(response.word) !== normalizedWord) {
-      return { status: 'unrecognized', enteredWord: displayWord, suggestedWord: response.word };
     }
 
     const existing = this.repository.findWordByNormalized(normalizedWord, language);
@@ -306,6 +319,7 @@ export class VocabService {
           partOfSpeech: sense.partOfSpeech,
           definition: sense.definition,
           examples: sense.examples,
+          synonyms: sense.synonyms,
           source: 'gemini',
           modelIdentifier: model,
           promptVersion: VOCAB_PROMPT_VERSION
@@ -351,7 +365,8 @@ export class VocabService {
       input.definition.trim(),
       input.example.trim(),
       input.source || 'manual',
-      input.examples
+      input.examples,
+      input.synonyms
     );
   }
 
@@ -441,6 +456,7 @@ export class VocabService {
           definition: d.definition,
           example: d.example,
           examples: d.examples.map(({ example, position, voice }) => ({ example, position, voice })),
+          synonyms: d.synonyms,
           source: d.source,
           modelIdentifier: d.modelIdentifier,
           generatedAt: d.generatedAt

@@ -23,6 +23,7 @@ const exampleSchema = z.object({
 const senseSchema = z.object({
   partOfSpeech: z.enum(ALLOWED_PARTS_OF_SPEECH as [string, ...string[]]).transform(val => val.toLowerCase() as PartOfSpeech),
   definition: z.string().trim().min(3, 'Definition must be at least 3 characters').max(1000, 'Definition exceeds maximum length'),
+  synonyms: z.array(z.string().trim().min(1).max(100)).max(8).default([]),
   examples: z.array(exampleSchema).length(6, 'Each definition must contain exactly six examples')
 });
 
@@ -30,7 +31,8 @@ export const geminiVocabRawSchema = z.object({
   word: z.string().trim().min(1, 'Word cannot be empty'),
   language: z.string().trim().default('en'),
   recognized: z.boolean(),
-  senses: z.array(senseSchema)
+  senses: z.array(senseSchema),
+  suggestions: z.array(z.string().trim().min(1).max(100)).max(5).default([])
 });
 
 export function validateAndNormalizeVocabResponse(
@@ -40,14 +42,23 @@ export function validateAndNormalizeVocabResponse(
 ): GeminiVocabResponse {
   const parsed = geminiVocabRawSchema.parse(rawJson);
 
-  // Verify normalized match
-  const returnedNormalized = parsed.word.trim().toLowerCase();
-  if (returnedNormalized !== expectedNormalizedWord.toLowerCase()) {
-    // If the model returned a slight variation (like plural or capitalization), normalize it
-    // but if it's completely different, reject
-    if (!returnedNormalized.includes(expectedNormalizedWord) && !expectedNormalizedWord.includes(returnedNormalized)) {
-      throw new Error(`Returned word "${parsed.word}" does not match requested word "${expectedNormalizedWord}"`);
-    }
+  const expected = normalizeWord(expectedNormalizedWord);
+  const returned = normalizeWord(parsed.word);
+  const suggestions = [...new Set([parsed.word, ...parsed.suggestions]
+    .map(candidate => candidate.trim())
+    .filter(candidate => candidate && normalizeWord(candidate) !== expected)
+    .filter(candidate => candidate.length <= 100))].slice(0, 5);
+
+  // A canonical spelling different from the submitted spelling should be offered for confirmation,
+  // never silently saved under the user's original input.
+  if (returned !== expected) {
+    return {
+      word: expectedNormalizedWord,
+      language: expectedLanguage,
+      recognized: false,
+      senses: [],
+      suggestions
+    };
   }
 
   if (parsed.recognized) {
@@ -59,6 +70,13 @@ export function validateAndNormalizeVocabResponse(
       if (uniqueExamples.size !== 6) {
         throw new Error('Each definition must contain six distinct examples.');
       }
+      const uniqueSynonyms = new Set(sense.synonyms.map(item => normalizeWord(item)));
+      if (uniqueSynonyms.size !== sense.synonyms.length) {
+        throw new Error('Each definition must contain distinct synonyms.');
+      }
+      if (sense.synonyms.some(item => normalizeWord(item) === normalizeWord(expectedNormalizedWord))) {
+        throw new Error('A synonym cannot repeat the requested word.');
+      }
     }
   } else {
     // Unrecognized word must have empty senses
@@ -66,7 +84,8 @@ export function validateAndNormalizeVocabResponse(
       word: expectedNormalizedWord,
       language: expectedLanguage,
       recognized: false,
-      senses: []
+      senses: [],
+      suggestions
     };
   }
 

@@ -29,7 +29,7 @@ export const modeRegistry: Record<string, RegisteredMode> = {
   },
   'idioms-phrases': {
     descriptor: IDIOMS_PHRASES_MODE,
-    component: null
+    component: React.lazy(() => import('../modes/idioms-phrases'))
   }
 };
 

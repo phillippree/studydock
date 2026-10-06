@@ -9,6 +9,7 @@ describe('Vocabulary Prompt Builder', () => {
     expect(instruction).toContain('Return ONLY a valid JSON object');
     expect(instruction).toContain('exactly six distinct natural example sentences');
     expect(instruction).toContain('never force an awkward passive construction');
+    expect(instruction).toContain('accurate synonyms that match that specific sense');
   });
 
   it('builds user prompt encapsulating target word safely as JSON', () => {
@@ -19,5 +20,6 @@ describe('Vocabulary Prompt Builder', () => {
     expect(parsed.language).toBe('en');
     expect(parsed.required_json_format).toBeDefined();
     expect(parsed.required_json_format.senses[0].examples).toHaveLength(6);
+    expect(parsed.required_json_format.senses[0].synonyms).toContain('persistent');
   });
 });

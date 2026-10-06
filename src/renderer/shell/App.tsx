@@ -56,7 +56,7 @@ export const App: React.FC = () => {
           </ErrorBoundary>
         )}
       </main>
-      <footer className="app-footer">Local word library · Gemini for new definitions</footer>
+      <footer className="app-footer">Local learning libraries · Gemini for new lookups</footer>
     </div>
   );
 };

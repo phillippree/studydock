@@ -114,6 +114,14 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
             {definitions.map(definition => <article className="quiz-sense" key={definition.id}>
               <span className="quiz-pos">{definition.partOfSpeech}</span>
               <p>{definition.definition}</p>
+              <div className="vocab-synonyms">
+                <span className="vocab-synonyms-title">Synonyms</span>
+                {definition.synonyms.length > 0 ? (
+                  <div className="vocab-synonym-list">
+                    {definition.synonyms.map(synonym => <span className="vocab-synonym-chip" key={`${definition.id}-${synonym}`}>{synonym}</span>)}
+                  </div>
+                ) : <span className="vocab-synonyms-empty">None saved yet</span>}
+              </div>
               {(definition.examples?.length ? definition.examples : definition.example ? [{ example: definition.example, voice: 'other' as const }] : []).map((item, index) => (
                 <p className="quiz-example" key={`${definition.id}-example-${index}`}>
                   <span className="example-voice">{item.voice}</span> “{item.example}”

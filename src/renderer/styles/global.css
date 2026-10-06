@@ -397,6 +397,11 @@ html, body, #root {
 .quiz-word { color: var(--text-primary); font: 500 clamp(2.8rem, 8vw, 4.4rem)/1.2 Georgia, serif; margin: 18px 0 10px; overflow-wrap: anywhere; }
 .quiz-language { color: var(--text-secondary); }
 .quiz-answer { width: min(560px, 100%); margin: 26px auto 0; padding: 20px; text-align: left; background: var(--bg-tertiary); border-radius: var(--radius-md); }
+.vocab-synonyms { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 14px; }
+.vocab-synonyms-title { color: var(--text-dim); font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.vocab-synonym-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.vocab-synonym-chip { display: inline-flex; padding: 3px 9px; border-radius: 999px; background: var(--bg-card); border: 1px solid var(--border-default); color: var(--text-primary); font-size: .82rem; }
+.vocab-synonyms-empty { color: var(--text-dim); font-size: .8rem; }
 .quiz-sense + .quiz-sense { border-top: 1px solid var(--border-default); margin-top: 16px; padding-top: 16px; }
 .quiz-pos { color: var(--accent-primary); font-size: .82rem; font-weight: 600; text-transform: capitalize; }
 .quiz-sense p { margin-top: 7px; }
@@ -411,4 +416,53 @@ html, body, #root {
 .vocab-example { color: var(--text-secondary); font-size: .94rem; font-style: italic; line-height: 1.5; padding-left: 12px; border-left: 2px solid var(--border-default); }
 .examples-refresh-note { color: var(--text-dim); font-size: .76rem; margin: 10px 0 0; }
 .quiz-example { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; }
+.expressions-page { width: min(1080px, 100%); min-height: 100%; margin: 0 auto; padding: 36px 28px 48px; display: flex; flex-direction: column; gap: 26px; }
+.expressions-heading, .expressions-title, .expressions-library-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.expressions-title { justify-content: flex-start; }
+.expressions-title h1 { font-size: 1.65rem; font-weight: 600; }
+.expressions-title p, .expressions-library-heading p { color: var(--text-secondary); margin-top: 4px; }
+.expressions-icon { width: 48px; height: 48px; display: grid; place-items: center; flex: 0 0 auto; color: var(--accent-primary); background: var(--info-bg); border-radius: var(--radius-md); }
+.expressions-lookup { padding: 22px; }
+.expressions-lookup h2, .expressions-library-heading h2 { display: flex; align-items: center; gap: 9px; font-size: 1.1rem; }
+.expressions-lookup h2 svg, .expressions-library-heading h2 svg { color: var(--accent-primary); }
+.expressions-help { color: var(--text-secondary); margin: 7px 0 18px; font-size: .9rem; }
+.expressions-form-row { display: flex; align-items: flex-end; gap: 14px; }
+.expressions-type-field { width: 150px; flex: 0 0 auto; }
+.expressions-input-field { flex: 1 1 auto; min-width: 160px; }
+.expressions-submit { flex: 0 0 auto; margin-bottom: 16px; }
+.expressions-feedback { display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; margin-top: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-md); font-size: .88rem; }
+.expressions-feedback svg { flex: 0 0 auto; margin-top: 2px; }
+.expressions-feedback.success { color: var(--success-text); background: var(--success-bg); }
+.expressions-feedback.error { color: var(--error-text); background: var(--error-bg); }
+.expressions-library { display: flex; flex-direction: column; gap: 16px; }
+.expressions-library-heading { align-items: flex-end; }
+.expressions-library-heading p { font-size: .87rem; }
+.expressions-filters { display: flex; gap: 7px; }
+.expressions-search { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 13px; color: var(--text-dim); background: var(--bg-input); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.expressions-search:focus-within { border-color: var(--accent-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 22%, transparent); }
+.expressions-search input { flex: 1; min-width: 0; color: var(--text-primary); background: transparent; border: 0; outline: 0; font: inherit; }
+.expressions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 14px; }
+.expression-card { padding: 20px; }
+.expression-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.expression-type-label { color: var(--accent-secondary); font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+.expression-card h3 { margin-top: 4px; font-size: 1.25rem; }
+.expression-language { color: var(--text-dim); font-size: .75rem; }
+.expression-meaning { margin-top: 14px; line-height: 1.5; }
+.expression-examples { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-default); }
+.expression-examples p { color: var(--text-secondary); margin-top: 8px; font-style: italic; line-height: 1.45; }
+.expressions-empty { min-height: 190px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; text-align: center; padding: 26px; }
+.expressions-empty > svg { color: var(--accent-primary); }
+.expressions-empty > p { color: var(--text-secondary); }
+.word-suggestions { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-tertiary); }
+.word-suggestions > p { margin: 0 0 9px; color: var(--text-secondary); font-size: .84rem; font-weight: 600; }
+.word-suggestions > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.word-suggestions .btn { text-transform: none; }
+@media (max-width: 680px) {
+  .expressions-page { padding: 24px 16px 36px; }
+  .expressions-heading, .expressions-library-heading { align-items: flex-start; flex-direction: column; }
+  .expressions-form-row { align-items: stretch; flex-direction: column; gap: 4px; }
+  .expressions-type-field, .expressions-input-field { width: 100%; }
+  .expressions-submit { align-self: flex-start; margin: 4px 0 0; }
+  .expressions-library-heading { gap: 12px; }
+}
 @media (max-width: 520px) { .quiz-page { padding: 24px 16px; } .quiz-card { padding: 30px 18px; } .quiz-answer { padding: 16px; } }

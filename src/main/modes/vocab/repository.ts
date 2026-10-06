@@ -9,7 +9,7 @@ import {
 export class VocabRepository {
   constructor(private db: Database) {}
 
-  private hydrateDefinitions(rows: Array<Omit<VocabDefinition, 'examples'>>): VocabDefinition[] {
+  private hydrateDefinitions(rows: Array<Omit<VocabDefinition, 'examples' | 'synonyms'>>): VocabDefinition[] {
     if (rows.length === 0) return [];
     const examples = this.db.prepare(`
       SELECT id, definition_id AS definitionId, example, position, voice
@@ -23,9 +23,21 @@ export class VocabRepository {
       bucket.push(example);
       grouped.set(definitionId, bucket);
     }
+    const synonyms = this.db.prepare(`
+      SELECT definition_id AS definitionId, synonym
+      FROM vocab_definition_synonyms
+      ORDER BY definition_id, position
+    `).all() as Array<{ definitionId: string; synonym: string }>;
+    const groupedSynonyms = new Map<string, string[]>();
+    for (const item of synonyms) {
+      const bucket = groupedSynonyms.get(item.definitionId) || [];
+      bucket.push(item.synonym);
+      groupedSynonyms.set(item.definitionId, bucket);
+    }
     return rows.map(row => ({
       ...row,
-      examples: grouped.get(row.id) || [{ example: row.example, position: 1, voice: 'other' }]
+      examples: grouped.get(row.id) || [{ example: row.example, position: 1, voice: 'other' }],
+      synonyms: groupedSynonyms.get(row.id) || []
     }));
   }
 
@@ -36,6 +48,21 @@ export class VocabRepository {
     `);
     examples.forEach((item, index) => {
       insert.run(item.id || `example_${definitionId}_${index + 1}`, definitionId, item.example, index + 1, item.voice || 'other');
+    });
+  }
+
+  private insertSynonyms(definitionId: string, synonyms: string[] = []): void {
+    const insert = this.db.prepare(`
+      INSERT INTO vocab_definition_synonyms (id, definition_id, synonym, position)
+      VALUES (?, ?, ?, ?)
+    `);
+    const seen = new Set<string>();
+    synonyms.forEach(value => {
+      const synonym = value.trim();
+      const normalized = synonym.toLocaleLowerCase();
+      if (!synonym || seen.has(normalized)) return;
+      seen.add(normalized);
+      insert.run(`synonym_${definitionId}_${seen.size}`, definitionId, synonym, seen.size);
     });
   }
 
@@ -144,6 +171,7 @@ export class VocabRepository {
       partOfSpeech: string;
       definition: string;
       examples: Array<{ example: string; voice: VocabExample['voice'] }>;
+      synonyms?: string[];
       source: string;
       modelIdentifier?: string;
       promptVersion?: number;
@@ -180,6 +208,7 @@ export class VocabRepository {
           now
         );
         this.insertExamples(definitionId, examples);
+        this.insertSynonyms(definitionId, item.synonyms);
         savedDefinitions.push({
           id: definitionId,
           wordId,
@@ -187,6 +216,7 @@ export class VocabRepository {
           definition: item.definition,
           example: examples[0].example,
           examples,
+          synonyms: item.synonyms || [],
           source: item.source as VocabDefinition['source'],
           modelIdentifier: item.modelIdentifier,
           promptVersion: item.promptVersion || 1,
@@ -269,7 +299,7 @@ export class VocabRepository {
       FROM vocab_definitions
       WHERE word_id = ?
       ORDER BY id ASC
-    `).all(wordId) as Array<Omit<VocabDefinition, 'examples'>>;
+    `).all(wordId) as Array<Omit<VocabDefinition, 'examples' | 'synonyms'>>;
 
     return this.hydrateDefinitions(rows);
   }
@@ -281,6 +311,7 @@ export class VocabRepository {
       definition: string;
       example: string;
       examples?: VocabExample[];
+      synonyms?: string[];
       source: string;
       modelIdentifier?: string;
       promptVersion?: number;
@@ -318,6 +349,7 @@ export class VocabRepository {
           now
         );
         this.insertExamples(defId, itemExamples);
+        this.insertSynonyms(defId, item.synonyms);
 
         result.push({
           id: defId,
@@ -326,6 +358,7 @@ export class VocabRepository {
           definition: item.definition,
           example: itemExamples[0].example,
           examples: itemExamples.map((example, index) => ({ ...example, position: index + 1 })),
+          synonyms: item.synonyms || [],
           source: item.source as VocabDefinition['source'],
           modelIdentifier: item.modelIdentifier,
           promptVersion: item.promptVersion || 1,
@@ -345,7 +378,8 @@ export class VocabRepository {
     definition: string,
     example: string,
     source = 'manual',
-    examples?: VocabExample[]
+    examples?: VocabExample[],
+    synonyms: string[] = []
   ): VocabDefinition {
     const now = new Date().toISOString();
     const id = `def_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -358,6 +392,7 @@ export class VocabRepository {
         ) VALUES (?, ?, ?, ?, ?, ?, NULL, 1, ?, ?)
       `).run(id, wordId, partOfSpeech, definition, itemExamples[0].example, source, now, now);
       this.insertExamples(id, itemExamples);
+      this.insertSynonyms(id, synonyms);
     });
     save();
 
@@ -368,6 +403,7 @@ export class VocabRepository {
       definition,
       example: itemExamples[0].example,
       examples: itemExamples,
+      synonyms,
       source: source as VocabDefinition['source'],
       generatedAt: now,
       updatedAt: now
@@ -384,7 +420,7 @@ export class VocabRepository {
       SELECT id, word_id as wordId, part_of_speech as partOfSpeech, definition, example, source, model_identifier as modelIdentifier, prompt_version as promptVersion, generated_at as generatedAt, updated_at as updatedAt
       FROM vocab_definitions
       WHERE id = ?
-    `).get(id) as Omit<VocabDefinition, 'examples'> | undefined;
+    `).get(id) as Omit<VocabDefinition, 'examples' | 'synonyms'> | undefined;
 
     if (!existing) return null;
 
@@ -405,6 +441,11 @@ export class VocabRepository {
       SELECT id, example, position, voice
       FROM vocab_definition_examples WHERE definition_id = ? ORDER BY position
     `).all(id) as VocabExample[];
+    const synonymRows = this.db.prepare(`
+      SELECT synonym FROM vocab_definition_synonyms
+      WHERE definition_id = ? ORDER BY position
+    `).all(id) as Array<{ synonym: string }>;
+    const synonyms = synonymRows.map(row => row.synonym);
 
     return {
       ...existing,
@@ -412,6 +453,7 @@ export class VocabRepository {
       definition,
       example,
       examples,
+      synonyms,
       updatedAt: now
     };
   }
@@ -442,7 +484,7 @@ export class VocabRepository {
         updated_at as updatedAt
       FROM vocab_definitions
       ORDER BY id ASC
-    `).all() as Array<Omit<VocabDefinition, 'examples'>>;
+    `).all() as Array<Omit<VocabDefinition, 'examples' | 'synonyms'>>;
     const defRows = this.hydrateDefinitions(rawDefRows);
 
     const defMap = new Map<string, VocabDefinition[]>();

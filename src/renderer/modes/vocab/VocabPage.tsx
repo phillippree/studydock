@@ -111,6 +111,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
           definition: d.definition,
           example: d.example,
           examples: d.examples,
+          synonyms: d.synonyms,
           source: d.source
         }))
       );
@@ -290,6 +291,15 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
 
                     <div style={{ fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '10px', lineHeight: 1.5 }}>
                       {sense.definition}
+                    </div>
+
+                    <div className="vocab-synonyms">
+                      <span className="vocab-synonyms-title">Synonyms</span>
+                      {sense.synonyms.length > 0 ? (
+                        <div className="vocab-synonym-list">
+                          {sense.synonyms.map(synonym => <span className="vocab-synonym-chip" key={`${sense.id}-${synonym}`}>{synonym}</span>)}
+                        </div>
+                      ) : <span className="vocab-synonyms-empty">None saved yet</span>}
                     </div>
 
                     {(sense.examples?.length ? sense.examples : sense.example ? [{ example: sense.example, voice: 'other' as const }] : []).map((item, exampleIndex) => (

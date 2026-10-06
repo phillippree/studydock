@@ -50,6 +50,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
 
   // Add word state
   const [newWordText, setNewWordText] = useState('');
+  const [wordSuggestions, setWordSuggestions] = useState<string[]>([]);
   const [addFeedback, setAddFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isVerifyingWord, setIsVerifyingWord] = useState(false);
 
@@ -99,32 +100,40 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
     w.normalizedWord.includes(searchQuery.toLowerCase())
   ).filter(w => !definedWordsOnly || w.definitionCount > 0);
 
-  const handleAddWord = async (e?: React.FormEvent) => {
+  const handleAddWord = async (e?: React.FormEvent, selectedSuggestion?: string) => {
     if (e) e.preventDefault();
-    const trimmed = newWordText.trim();
+    const trimmed = (selectedSuggestion || newWordText).trim();
     if (!trimmed) {
       setAddFeedback({ type: 'error', text: 'Enter a word or phrase above, then choose Add Word.' });
       return;
     }
 
     setAddFeedback(null);
+    setWordSuggestions([]);
+    if (selectedSuggestion) setNewWordText(selectedSuggestion);
     setIsVerifyingWord(true);
     try {
       const result = await window.studydockBridge.vocabVerifyAndAddWord({ word: trimmed });
       if (result.status === 'duplicate') {
         setAddFeedback({ type: 'error', text: `"${result.word.displayWord}" is already in your word library.` });
+      } else if (result.status === 'suggestions') {
+        setWordSuggestions(result.suggestions);
+        setAddFeedback({ type: 'error', text: `Gemini couldn't verify "${result.enteredWord}" as written. Choose a possible spelling below to look it up.` });
       } else if (result.status === 'unrecognized') {
-        const suggestion = result.suggestedWord ? ` Did you mean "${result.suggestedWord}"?` : '';
-        setAddFeedback({ type: 'error', text: `Gemini couldn't confirm "${result.enteredWord}" as a recognized word or phrase, so it wasn't added.${suggestion}` });
+        setAddFeedback({ type: 'error', text: `Gemini couldn't find "${result.enteredWord}" as a recognized word or phrase. It wasn't added. Check the spelling and try again.` });
+      } else if (result.status === 'error') {
+        setAddFeedback({ type: 'error', text: `Couldn't check "${result.enteredWord}": ${result.message}` });
       } else {
         setAddFeedback({ type: 'success', text: `"${result.word.displayWord}" added with ${result.definitions.length} definition${result.definitions.length === 1 ? '' : 's'} and six examples per definition.` });
         setNewWordText('');
+        setWordSuggestions([]);
         await loadWords();
         onWordListChanged();
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to add word';
-      setAddFeedback({ type: 'error', text: msg });
+      const rawMessage = err instanceof Error ? err.message : 'Please try again.';
+      const friendlyMessage = rawMessage.replace(/^Error invoking remote method '[^']+': Error:\s*/, '');
+      setAddFeedback({ type: 'error', text: `Couldn't verify this word. ${friendlyMessage}` });
     } finally {
       setIsVerifyingWord(false);
     }
@@ -204,6 +213,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
           definition: def.definition,
           example: def.example,
           examples: def.examples,
+          synonyms: def.synonyms,
           source: def.source
         });
       }
@@ -603,6 +613,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
                           </span>
                         </div>
                         <p style={{ fontSize: '0.9rem', marginBottom: '4px' }}>{def.definition}</p>
+                        {def.synonyms.length > 0 && <div className="vocab-synonyms"><span className="vocab-synonyms-title">Synonyms</span><div className="vocab-synonym-list">{def.synonyms.map(synonym => <span className="vocab-synonym-chip" key={`${def.id}-${synonym}`}>{synonym}</span>)}</div></div>}
                         {(def.examples?.length ? def.examples : [{ example: def.example, voice: 'other' as const }]).map((item, index) => (
                           <p key={`${def.id}-example-${index}`} style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '4px' }}>
                             <span className="example-voice">{item.voice}</span> “{item.example}”
@@ -641,13 +652,14 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
                   disabled={isVerifyingWord}
                   onChange={(e) => {
                     setNewWordText(e.target.value);
+                    setWordSuggestions([]);
                     if (addFeedback) setAddFeedback(null);
                   }}
                   aria-describedby="add-word-help"
                   autoFocus
                 />
                 <p id="add-word-help" style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginTop: '6px' }}>
-                  Type a word or phrase first. You can add its definition afterward.
+                  Gemini will verify the spelling, then save the word, definitions, synonyms, and examples.
                 </p>
               </div>
 
@@ -672,6 +684,16 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
                 }} role={addFeedback.type === 'error' ? 'alert' : 'status'}>
                   {addFeedback.type === 'success' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
                   <span>{addFeedback.text}</span>
+                </div>
+              )}
+              {wordSuggestions.length > 0 && (
+                <div className="word-suggestions" role="group" aria-label="Possible corrected spellings">
+                  <p>Possible matches</p>
+                  <div>{wordSuggestions.map(suggestion => (
+                    <button key={suggestion} type="button" className="btn btn-secondary btn-sm" disabled={isVerifyingWord} onClick={() => { void handleAddWord(undefined, suggestion); }}>
+                      <Search size={14} />{suggestion}
+                    </button>
+                  ))}</div>
                 </div>
               )}
             </form>

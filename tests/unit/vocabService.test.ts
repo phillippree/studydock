@@ -61,6 +61,7 @@ describe('Vocabulary Service Logic and Resilience', () => {
         {
           partOfSpeech: 'adjective',
           definition: 'Too great or extreme to be expressed in words.',
+          synonyms: ['indescribable', 'inexpressible'],
           examples: Array.from({ length: 6 }, (_, index) => ({
             example: `The view from the mountain peak was of ineffable beauty, example ${index + 1}.`,
             voice: index === 1 ? 'passive' : 'active'
@@ -80,6 +81,7 @@ describe('Vocabulary Service Logic and Resilience', () => {
     expect(inDb[0].source).toBe('gemini');
     expect(inDb[0].examples).toHaveLength(6);
     expect(inDb[0].examples[1].voice).toBe('passive');
+    expect(inDb[0].synonyms).toEqual(['indescribable', 'inexpressible']);
   });
 
   it('preserves existing definitions when a refresh request fails', async () => {
@@ -180,6 +182,7 @@ describe('Vocabulary Service Logic and Resilience', () => {
       senses: [{
         partOfSpeech: 'adjective',
         definition: 'Having a ready insight into and understanding of things.',
+        synonyms: ['perceptive', 'observant'],
         examples: Array.from({ length: 6 }, (_, index) => ({
           example: `The perspicacious editor caught the subtle error in example ${index + 1}.`,
           voice: index === 1 ? 'passive' : 'active' as const
@@ -193,8 +196,10 @@ describe('Vocabulary Service Logic and Resilience', () => {
     if (result.status !== 'added') throw new Error('Expected the verified word to be added.');
     expect(result.word.displayWord).toBe('perspicacious');
     expect(result.definitions[0].examples).toHaveLength(6);
+    expect(result.definitions[0].synonyms).toEqual(['perceptive', 'observant']);
     expect(repo.getWordsCount()).toBe(wordCountBefore + 1);
     expect(repo.getDefinitionsForWord(result.word.id)[0].examples).toHaveLength(6);
+    expect(repo.getDefinitionsForWord(result.word.id)[0].synonyms).toEqual(['perceptive', 'observant']);
   });
 
   it('does not add an unrecognized term', async () => {
@@ -206,6 +211,28 @@ describe('Vocabulary Service Logic and Resilience', () => {
 
     expect(result.status).toBe('unrecognized');
     expect(repo.findWordByNormalized('xyzqwerty987', 'en')).toBeNull();
+  });
+
+  it('returns corrected spelling options without saving a misspelled word', async () => {
+    vi.spyOn(mockGemini, 'generateStructured').mockResolvedValueOnce({
+      word: 'commiserating', language: 'en', recognized: false, senses: [],
+      suggestions: ['commiserating', 'commiserate']
+    });
+
+    const result = await service.verifyAndAddWord({ word: 'comisserating' });
+
+    expect(result).toEqual({ status: 'suggestions', enteredWord: 'comisserating', suggestions: ['commiserating', 'commiserate'] });
+    expect(repo.findWordByNormalized('comisserating', 'en')).toBeNull();
+    expect(repo.findWordByNormalized('commiserating', 'en')).toBeNull();
+  });
+
+  it('turns Gemini lookup failures into a user-facing result without throwing an IPC exception', async () => {
+    vi.spyOn(mockGemini, 'generateStructured').mockRejectedValueOnce(new Error('Gemini request failed: Network connection failed.'));
+
+    await expect(service.verifyAndAddWord({ word: 'comisserating' })).resolves.toMatchObject({
+      status: 'error', enteredWord: 'comisserating', message: 'Gemini request failed: Network connection failed.'
+    });
+    expect(repo.findWordByNormalized('comisserating', 'en')).toBeNull();
   });
 
   it('requires a configured Gemini key before verifying a new term', async () => {

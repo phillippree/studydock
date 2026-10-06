@@ -17,6 +17,7 @@ export interface VocabSense {
   definition: string;
   example: string;
   examples?: VocabExample[];
+  synonyms?: string[];
 }
 
 export type ExampleVoice = 'active' | 'passive' | 'other';
@@ -45,6 +46,7 @@ export interface VocabDefinition {
   /** First example retained for compatibility with manual-edit forms and older exports. */
   example: string;
   examples: VocabExample[];
+  synonyms: string[];
   source: 'gemini' | 'manual' | 'local';
   modelIdentifier?: string;
   promptVersion?: number;
@@ -71,6 +73,7 @@ export interface GeminiVocabSense {
   partOfSpeech: string;
   definition: string;
   examples: Array<{ example: string; voice: ExampleVoice }>;
+  synonyms: string[];
 }
 
 export interface GeminiVocabResponse {
@@ -78,6 +81,7 @@ export interface GeminiVocabResponse {
   language: string;
   recognized: boolean;
   senses: GeminiVocabSense[];
+  suggestions?: string[];
 }
 
 export interface AddWordInput {
@@ -88,7 +92,9 @@ export interface AddWordInput {
 export type VerifyAndAddWordResult =
   | { status: 'added'; word: VocabWord; definitions: VocabDefinition[] }
   | { status: 'duplicate'; word: VocabWord }
-  | { status: 'unrecognized'; enteredWord: string; suggestedWord?: string };
+  | { status: 'suggestions'; enteredWord: string; suggestions: string[] }
+  | { status: 'unrecognized'; enteredWord: string }
+  | { status: 'error'; enteredWord: string; message: string };
 
 export interface EditWordInput {
   id: string;
@@ -109,6 +115,7 @@ export interface AddDefinitionInput {
   definition: string;
   example: string;
   examples?: VocabExample[];
+  synonyms?: string[];
   source?: 'manual' | 'gemini' | 'local';
 }
 
@@ -130,6 +137,7 @@ export interface ExportWordData {
     definition: string;
     example: string;
     examples?: VocabExample[];
+    synonyms?: string[];
     source: string;
     modelIdentifier?: string;
     generatedAt: string;
