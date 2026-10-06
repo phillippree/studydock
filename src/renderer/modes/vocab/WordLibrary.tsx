@@ -12,7 +12,8 @@ import {
   Book,
   FileText,
   Save,
-  RotateCcw
+  RotateCcw,
+  RotateCw
 } from 'lucide-react';
 import {
   PartOfSpeech,
@@ -27,6 +28,7 @@ interface WordLibraryProps {
   onSelectWord: (wordId: string) => void;
   onWordListChanged: () => void;
   definedWordsOnly?: boolean;
+  onDefinitionRefreshed?: (wordId: string, result: Awaited<ReturnType<Window['studydockBridge']['vocabFetchDefinition']>>) => void;
 }
 
 type LibraryTab = 'words' | 'import' | 'add';
@@ -36,12 +38,15 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
   onClose,
   onSelectWord,
   onWordListChanged,
-  definedWordsOnly = false
+  definedWordsOnly = false,
+  onDefinitionRefreshed
 }) => {
   const [activeTab, setActiveTab] = useState<LibraryTab>('words');
   const [words, setWords] = useState<Array<VocabWord & { definitionCount: number }>>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshingWordId, setRefreshingWordId] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Add word state
   const [newWordText, setNewWordText] = useState('');
@@ -136,6 +141,25 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
       }
     } catch (err) {
       console.error('Failed to load word details:', err);
+    }
+  };
+
+  const handleRefreshDefinition = async (word: VocabWord) => {
+    setRefreshingWordId(word.id);
+    setActionFeedback(null);
+    try {
+      const result = await window.studydockBridge.vocabFetchDefinition(word.id, true);
+      if (result.status !== 'generated_gemini') {
+        throw new Error(result.generationError || 'Gemini did not replace this definition. Your saved definition was kept.');
+      }
+      await loadWords();
+      onDefinitionRefreshed?.(word.id, result);
+      setActionFeedback({ type: 'success', text: `Definition refreshed for “${word.displayWord}”.` });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Could not refresh this definition.';
+      setActionFeedback({ type: 'error', text: message });
+    } finally {
+      setRefreshingWordId(null);
     }
   };
 
@@ -365,6 +389,19 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
               />
             </div>
 
+            {actionFeedback && <div
+              role={actionFeedback.type === 'error' ? 'alert' : 'status'}
+              style={{
+                padding: '10px 14px',
+                marginBottom: '12px',
+                borderRadius: 'var(--radius-md)',
+                background: actionFeedback.type === 'error' ? 'var(--error-bg)' : 'var(--success-bg)',
+                border: `1px solid ${actionFeedback.type === 'error' ? 'var(--error-border)' : 'var(--success-border)'}`,
+                color: actionFeedback.type === 'error' ? 'var(--error-text)' : 'var(--success-text)',
+                fontSize: '0.85rem'
+              }}
+            >{actionFeedback.text}</div>}
+
             {/* Words Table / Scroll Area */}
             <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)' }}>
               {filteredWords.length === 0 ? (
@@ -418,8 +455,19 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
                             <button
                               className="btn btn-ghost btn-sm"
+                              onClick={() => void handleRefreshDefinition(word)}
+                              title={`Refresh definition for ${word.displayWord} with Gemini`}
+                              aria-label={`Refresh definition for ${word.displayWord}`}
+                              disabled={refreshingWordId !== null}
+                            >
+                              <RotateCw size={14} className={refreshingWordId === word.id ? 'spinner' : ''} />
+                            </button>
+                            <button
+                              className="btn btn-ghost btn-sm"
                               onClick={() => handleStartEdit(word)}
                               title="Edit word or definitions"
+                              aria-label={`Edit ${word.displayWord}`}
+                              disabled={refreshingWordId !== null}
                             >
                               <Edit2 size={14} />
                             </button>

@@ -150,9 +150,7 @@ async function initializeApp(): Promise<void> {
 app.whenReady().then(initializeApp).catch(console.error);
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  app.quit();
 });
 
 app.on('activate', async () => {

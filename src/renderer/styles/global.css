@@ -403,6 +403,7 @@ html, body, #root {
 .quiz-example { color: var(--text-secondary); font-style: italic; }
 .quiz-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
 .quiz-error { display: flex; gap: 8px; align-items: center; color: var(--error-text); margin-top: 18px; }
+.quiz-success { color: var(--success-text); margin-top: 16px; font-size: .88rem; }
 .quiz-empty > svg { color: var(--accent-primary); margin-bottom: 16px; }
 .quiz-empty h2 { margin-bottom: 8px; }
 .quiz-empty > p { max-width: 480px; color: var(--text-secondary); }

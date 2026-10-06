@@ -407,6 +407,9 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
         isOpen={isLibraryOpen}
         onClose={() => setIsLibraryOpen(false)}
         onSelectWord={handleSelectWordFromLibrary}
+        onDefinitionRefreshed={(wordId, result) => {
+          if (activeWordIdRef.current === wordId) setCurrentWordState(result);
+        }}
         onWordListChanged={() => {
           if (!currentWordState) {
             loadRandomWord(false);
