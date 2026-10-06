@@ -163,6 +163,10 @@ Creates distributable installers (`.dmg`/`.zip` on macOS, `.exe` NSIS installer 
 npm run package
 ```
 
+To create only a macOS `.dmg`, run `bash scripts/build-macos-dmg.sh` (or `npm run package:mac`) on a Mac. Install dependencies first with `npm ci`. The disk image is written to `release/` and is built for the Mac's current architecture. Apple Developer signing and notarization are not configured, so macOS may show a first-open security warning.
+
+The macOS app and disk image use the StudyDock open-book-and-compass icon from `assets/studydock.icns`; its 1024-pixel PNG source is `assets/studydock-icon.png`.
+
 ---
 
 ## How to Add a New Learning Mode

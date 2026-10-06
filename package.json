@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "postinstall": "electron-builder install-app-deps",
     "package": "npm run build && electron-builder",
+    "package:mac": "bash scripts/build-macos-dmg.sh",
     "prestart": "npm run build"
   },
   "build": {
@@ -30,6 +31,7 @@
       "package.json"
     ],
     "mac": {
+      "icon": "assets/studydock.icns",
       "category": "public.app-category.education",
       "target": [
         "dmg",
