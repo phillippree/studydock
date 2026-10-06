@@ -12,11 +12,30 @@ export interface GenerateStructuredRequest<T> {
 }
 
 export class GeminiClient {
+  private logGemini(direction: 'REQUEST' | 'RESPONSE' | 'ERROR', details: unknown, apiKey?: string): void {
+    const redact = (value: unknown): unknown => {
+      if (typeof value === 'string') {
+        let safe = apiKey ? value.split(apiKey).join('[REDACTED_API_KEY]') : value;
+        safe = safe.replace(/AIza[0-9A-Za-z_-]{20,}/g, '[REDACTED_API_KEY]');
+        return safe;
+      }
+      if (Array.isArray(value)) return value.map(redact);
+      if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, redact(entry)]));
+      }
+      return value;
+    };
+
+    // Log the Gemini payload and result for diagnostics, while never logging credentials.
+    console.info(`[StudyDock Gemini ${direction}]\n${JSON.stringify(redact(details), null, 2)}`);
+  }
+
   public async listModels(apiKeyOverride?: string): Promise<ListModelsResult> {
     const key = apiKeyOverride?.trim() || this.getApiKey();
     if (!key) return { success: false, models: [], error: 'Enter a key or save one before refreshing models.' };
     try {
       const ai = new GoogleGenAI({ apiKey: key });
+      this.logGemini('REQUEST', { operation: 'models.list', pageSize: 100 }, key);
       const pager = await ai.models.list({ config: { pageSize: 100, httpOptions: { timeout: 15000, retryOptions: { attempts: 1 } } } });
       const models: AvailableModel[] = [];
       for await (const model of pager) {
@@ -24,9 +43,12 @@ export class GeminiClient {
         if (!id?.startsWith('gemini-') || !model.supportedActions?.includes('generateContent') || /image|tts|audio|live|robotics|computer-use|transcribe|omni/i.test(id)) continue;
         models.push({ id, name: model.displayName || id, description: model.description || 'Gemini text model' });
       }
-      return { success: true, models: [...new Map(models.map(m => [m.id, m])).values()].sort((a, b) => a.name.localeCompare(b.name)) };
+      const availableModels = [...new Map(models.map(m => [m.id, m])).values()].sort((a, b) => a.name.localeCompare(b.name));
+      this.logGemini('RESPONSE', { operation: 'models.list', models: availableModels }, key);
+      return { success: true, models: availableModels };
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : String(err);
+      this.logGemini('ERROR', { operation: 'models.list', message: raw }, key);
       return { success: false, models: [], error: this.sanitizeErrorMessage(new Error(raw.split(key).join('[REDACTED]'))) };
     }
   }
@@ -42,11 +64,14 @@ export class GeminiClient {
     const startTime = Date.now();
     try {
       const ai = new GoogleGenAI({ apiKey: key });
-      const response = await ai.models.generateContent({
+      const request = {
         model,
         contents: 'Reply with exactly OK.',
         config: { maxOutputTokens: 64, httpOptions: { timeout: 15000, retryOptions: { attempts: 1 } } }
-      });
+      };
+      this.logGemini('REQUEST', { operation: 'models.generateContent', ...request }, key);
+      const response = await ai.models.generateContent(request);
+      this.logGemini('RESPONSE', { operation: 'models.generateContent', model, text: response.text ?? '' }, key);
       if (!response.text?.trim()) return { success: false, message: 'Gemini returned no text. Try another model.' };
       return {
         success: true,
@@ -56,6 +81,7 @@ export class GeminiClient {
       };
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : String(err);
+      this.logGemini('ERROR', { operation: 'models.generateContent', model, message: raw }, key);
       const redacted = raw.split(key).join('[REDACTED]');
       return { success: false, message: `Connection test failed: ${this.sanitizeErrorMessage(new Error(redacted))}` };
     }
@@ -74,7 +100,7 @@ export class GeminiClient {
       // Try with @google/genai
       try {
         const ai = new GoogleGenAI({ apiKey: key });
-        const response = await ai.models.generateContent({
+        const request = {
           model,
           contents: req.prompt,
           config: {
@@ -82,9 +108,13 @@ export class GeminiClient {
             responseMimeType: 'application/json',
             temperature: 0.2
           }
-        });
+        };
+        this.logGemini('REQUEST', { operation: 'models.generateContent', systemInstruction: req.systemInstruction, ...request }, key);
+        const response = await ai.models.generateContent(request);
         rawText = response.text || '';
+        this.logGemini('RESPONSE', { operation: 'models.generateContent', model, text: rawText }, key);
       } catch (errGenAi) {
+        this.logGemini('ERROR', { operation: 'models.generateContent', model, message: errGenAi instanceof Error ? errGenAi.message : String(errGenAi) }, key);
         // Fallback to @google/generative-ai
         const genAI = new GoogleGenerativeAI(key);
         const genModel = genAI.getGenerativeModel({
@@ -95,10 +125,13 @@ export class GeminiClient {
             temperature: 0.2
           }
         });
+        this.logGemini('REQUEST', { sdk: '@google/generative-ai', operation: 'generateContent', model, systemInstruction: req.systemInstruction, prompt: req.prompt }, key);
         const result = await genModel.generateContent(req.prompt);
         rawText = result.response.text();
+        this.logGemini('RESPONSE', { sdk: '@google/generative-ai', operation: 'generateContent', model, text: rawText }, key);
       }
     } catch (err: unknown) {
+      this.logGemini('ERROR', { operation: 'models.generateContent', model, message: err instanceof Error ? err.message : String(err) }, key);
       const cleanError = this.sanitizeErrorMessage(err);
       throw new Error(`Gemini request failed: ${cleanError}`);
     }

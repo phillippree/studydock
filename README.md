@@ -77,6 +77,30 @@ StudyDock application data/
 - **Settings (`settings/preferences.json`):** Application preferences such as the selected Gemini model (`gemini-2.5-flash`, `gemini-2.0-flash`, etc.).
 - **Secrets (`secrets/gemini-key.enc`):** Gemini API key encrypted using Electron's OS-backed `safeStorage` (Keychain on macOS, DPAPI on Windows, Secret Service on Linux). If OS encryption is unavailable, keys are kept in session memory only and never written unencrypted to disk.
 
+### Files created by Electron and Chromium
+
+Electron also keeps a Chromium browser profile alongside StudyDock's application data. These entries support the embedded app window; they are not StudyDock's word database or Gemini settings. Chromium may recreate cache and journal entries as needed.
+
+| Entry | Purpose |
+|---|---|
+| `Cache/` | Cached web resources used to render the app. |
+| `Code Cache/` | Cached compiled browser scripts to help the interface load faster. |
+| `GPUCache/`, `GPUPersistentCache/`, `DawnGraphiteCache/`, `DawnWebGPUCache/`, `GraphiteDawnCache/` | Graphics and GPU rendering caches. |
+| `Cookies`, `Cookies-journal` | Chromium cookie store and its temporary database journal. |
+| `DIPS`, `DIPS-wal` | Chromium site interaction and privacy state; the `-wal` entry is a SQLite write-ahead log. |
+| `Local Storage/` | Browser-style local storage used by app web content. StudyDock's primary vocabulary data is stored in its SQLite database. |
+| `Session Storage/` | Short-lived browser storage associated with app pages and sessions. |
+| `Shared Dictionary/` | Cached compression dictionaries that Chromium can use for network resources. |
+| `Trust Tokens`, `Trust Tokens-journal` | Chromium-managed trust-token data and its temporary journal. |
+| `blob_storage/` | Browser-managed data backing temporary web blobs. |
+| `Local State`, `Preferences` | Chromium and Electron profile settings. |
+| `Network Persistent State` | Persistent state used by Chromium's network stack. |
+| `declarative_performance_observer.db`, `declarative_performance_observer.db-journal` | Chromium performance-observation data and its temporary database journal. |
+| `backups/` | Reserved for StudyDock database backups. |
+| `storage/` | Reserved for persistent files owned by individual StudyDock modes. |
+
+Files ending in `-wal` or `-journal` are database support files. Let the app and SQLite manage them; do not manually remove them while StudyDock is open. This README describes file purposes only and does not include a machine-specific storage location.
+
 ---
 
 ## Development & Build Commands
