@@ -4,6 +4,16 @@
 
 The application features an extensible, modular architecture with independent learning modes. **Vocabulary** and **Word Quiz** use the same local word library. **Idioms & Phrases** has its own verified lookup flow and local expression library.
 
+## Screenshots
+
+### Landing page
+
+<img src="images/landingpage.png" alt="StudyDock landing page showing available learning modes and Gemini connection status" width="720">
+
+### Vocabulary mode
+
+<img src="images/vocab.png" alt="StudyDock Vocabulary mode showing a saved word, synonyms, and example sentences" width="720">
+
 ---
 
 ## Architecture Overview
