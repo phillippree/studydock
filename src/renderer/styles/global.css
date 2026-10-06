@@ -405,4 +405,8 @@ html, body, #root {
 .quiz-empty > svg { color: var(--accent-primary); margin-bottom: 16px; }
 .quiz-empty h2 { margin-bottom: 8px; }
 .quiz-empty > p { max-width: 480px; color: var(--text-secondary); }
+.example-voice { flex: 0 0 auto; color: var(--text-dim); font-size: .68rem; font-style: normal; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
+.vocab-example { color: var(--text-secondary); font-size: .94rem; font-style: italic; line-height: 1.5; padding-left: 12px; border-left: 2px solid var(--border-default); }
+.examples-refresh-note { color: var(--text-dim); font-size: .76rem; margin: 10px 0 0; }
+.quiz-example { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; }
 @media (max-width: 520px) { .quiz-page { padding: 24px 16px; } .quiz-card { padding: 30px 18px; } .quiz-answer { padding: 16px; } }

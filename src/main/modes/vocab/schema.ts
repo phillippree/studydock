@@ -15,10 +15,15 @@ export const ALLOWED_PARTS_OF_SPEECH: [PartOfSpeech, ...PartOfSpeech[]] = [
   'other'
 ];
 
+const exampleSchema = z.object({
+  example: z.string().trim().min(3, 'Example must be at least 3 characters').max(1000, 'Example exceeds maximum length'),
+  voice: z.enum(['active', 'passive', 'other'])
+});
+
 const senseSchema = z.object({
   partOfSpeech: z.enum(ALLOWED_PARTS_OF_SPEECH as [string, ...string[]]).transform(val => val.toLowerCase() as PartOfSpeech),
   definition: z.string().trim().min(3, 'Definition must be at least 3 characters').max(1000, 'Definition exceeds maximum length'),
-  example: z.string().trim().min(3, 'Example must be at least 3 characters').max(1000, 'Example exceeds maximum length')
+  examples: z.array(exampleSchema).length(6, 'Each definition must contain exactly six examples')
 });
 
 export const geminiVocabRawSchema = z.object({
@@ -48,6 +53,12 @@ export function validateAndNormalizeVocabResponse(
   if (parsed.recognized) {
     if (!parsed.senses || parsed.senses.length === 0) {
       throw new Error('Recognized word response must contain at least one sense/definition.');
+    }
+    for (const sense of parsed.senses) {
+      const uniqueExamples = new Set(sense.examples.map(item => item.example.toLowerCase()));
+      if (uniqueExamples.size !== 6) {
+        throw new Error('Each definition must contain six distinct examples.');
+      }
     }
   } else {
     // Unrecognized word must have empty senses

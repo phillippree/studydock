@@ -29,7 +29,7 @@ export interface StudyDockAPI {
   // Vocabulary Mode Operations
   vocabGetRandomWord(options?: { excludeWordId?: string }): Promise<VocabWordWithDefinitions | null>;
   vocabFetchDefinition(wordId: string, forceRefresh?: boolean): Promise<VocabWordWithDefinitions>;
-  vocabSaveDefinitionRetry(wordId: string, senses: Array<{ partOfSpeech: string; definition: string; example: string; source?: string }>): Promise<VocabWordWithDefinitions>;
+  vocabSaveDefinitionRetry(wordId: string, senses: Array<{ partOfSpeech: string; definition: string; example: string; examples?: VocabDefinition['examples']; source?: string }>): Promise<VocabWordWithDefinitions>;
   vocabGetAllWords(): Promise<Array<VocabWord & { definitionCount: number }>>;
   vocabGetWordDetails(wordId: string): Promise<VocabWordWithDefinitions | null>;
   vocabAddWord(input: AddWordInput): Promise<{ word: VocabWord; isDuplicate: boolean }>;

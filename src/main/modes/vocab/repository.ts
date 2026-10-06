@@ -1,12 +1,43 @@
 import { Database } from 'better-sqlite3';
 import {
   PartOfSpeech,
+  VocabExample,
   VocabDefinition,
   VocabWord
 } from '../../../shared/contracts/vocab';
 
 export class VocabRepository {
   constructor(private db: Database) {}
+
+  private hydrateDefinitions(rows: Array<Omit<VocabDefinition, 'examples'>>): VocabDefinition[] {
+    if (rows.length === 0) return [];
+    const examples = this.db.prepare(`
+      SELECT id, definition_id AS definitionId, example, position, voice
+      FROM vocab_definition_examples
+      ORDER BY definition_id, position
+    `).all() as Array<VocabExample & { definitionId: string }>;
+    const grouped = new Map<string, VocabExample[]>();
+    for (const item of examples) {
+      const { definitionId, ...example } = item;
+      const bucket = grouped.get(definitionId) || [];
+      bucket.push(example);
+      grouped.set(definitionId, bucket);
+    }
+    return rows.map(row => ({
+      ...row,
+      examples: grouped.get(row.id) || [{ example: row.example, position: 1, voice: 'other' }]
+    }));
+  }
+
+  private insertExamples(definitionId: string, examples: VocabExample[]): void {
+    const insert = this.db.prepare(`
+      INSERT INTO vocab_definition_examples (id, definition_id, example, position, voice)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+    examples.forEach((item, index) => {
+      insert.run(item.id || `example_${definitionId}_${index + 1}`, definitionId, item.example, index + 1, item.voice || 'other');
+    });
+  }
 
   public getWordsCount(): number {
     const row = this.db.prepare('SELECT COUNT(*) as count FROM vocab_words').get() as { count: number };
@@ -171,9 +202,9 @@ export class VocabRepository {
       FROM vocab_definitions
       WHERE word_id = ?
       ORDER BY id ASC
-    `).all(wordId) as VocabDefinition[];
+    `).all(wordId) as Array<Omit<VocabDefinition, 'examples'>>;
 
-    return rows;
+    return this.hydrateDefinitions(rows);
   }
 
   public replaceDefinitions(
@@ -182,6 +213,7 @@ export class VocabRepository {
       partOfSpeech: string;
       definition: string;
       example: string;
+      examples?: VocabExample[];
       source: string;
       modelIdentifier?: string;
       promptVersion?: number;
@@ -203,25 +235,30 @@ export class VocabRepository {
       for (let i = 0; i < definitions.length; i++) {
         const item = definitions[i];
         const defId = `def_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 7)}`;
+        const itemExamples = item.examples?.length
+          ? item.examples
+          : [{ example: item.example, position: 1, voice: 'other' as const }];
         insert.run(
           defId,
           wordId,
           item.partOfSpeech,
           item.definition,
-          item.example,
+          itemExamples[0].example,
           item.source,
           item.modelIdentifier || null,
           item.promptVersion || 1,
           now,
           now
         );
+        this.insertExamples(defId, itemExamples);
 
         result.push({
           id: defId,
           wordId,
           partOfSpeech: item.partOfSpeech as PartOfSpeech,
           definition: item.definition,
-          example: item.example,
+          example: itemExamples[0].example,
+          examples: itemExamples.map((example, index) => ({ ...example, position: index + 1 })),
           source: item.source as VocabDefinition['source'],
           modelIdentifier: item.modelIdentifier,
           promptVersion: item.promptVersion || 1,
@@ -240,23 +277,30 @@ export class VocabRepository {
     partOfSpeech: string,
     definition: string,
     example: string,
-    source = 'manual'
+    source = 'manual',
+    examples?: VocabExample[]
   ): VocabDefinition {
     const now = new Date().toISOString();
     const id = `def_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-    this.db.prepare(`
-      INSERT INTO vocab_definitions (
-        id, word_id, part_of_speech, definition, example, source, model_identifier, prompt_version, generated_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, NULL, 1, ?, ?)
-    `).run(id, wordId, partOfSpeech, definition, example, source, now, now);
+    const itemExamples = examples?.length ? examples : [{ example, position: 1, voice: 'other' as const }];
+    const save = this.db.transaction(() => {
+      this.db.prepare(`
+        INSERT INTO vocab_definitions (
+          id, word_id, part_of_speech, definition, example, source, model_identifier, prompt_version, generated_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, NULL, 1, ?, ?)
+      `).run(id, wordId, partOfSpeech, definition, itemExamples[0].example, source, now, now);
+      this.insertExamples(id, itemExamples);
+    });
+    save();
 
     return {
       id,
       wordId,
       partOfSpeech: partOfSpeech as PartOfSpeech,
       definition,
-      example,
+      example: itemExamples[0].example,
+      examples: itemExamples,
       source: source as VocabDefinition['source'],
       generatedAt: now,
       updatedAt: now
@@ -273,7 +317,7 @@ export class VocabRepository {
       SELECT id, word_id as wordId, part_of_speech as partOfSpeech, definition, example, source, model_identifier as modelIdentifier, prompt_version as promptVersion, generated_at as generatedAt, updated_at as updatedAt
       FROM vocab_definitions
       WHERE id = ?
-    `).get(id) as VocabDefinition | undefined;
+    `).get(id) as Omit<VocabDefinition, 'examples'> | undefined;
 
     if (!existing) return null;
 
@@ -284,11 +328,23 @@ export class VocabRepository {
       WHERE id = ?
     `).run(partOfSpeech, definition, example, now, id);
 
+    this.db.prepare(`
+      UPDATE vocab_definition_examples
+      SET example = ?, voice = 'other'
+      WHERE definition_id = ? AND position = 1
+    `).run(example, id);
+
+    const examples = this.db.prepare(`
+      SELECT id, example, position, voice
+      FROM vocab_definition_examples WHERE definition_id = ? ORDER BY position
+    `).all(id) as VocabExample[];
+
     return {
       ...existing,
       partOfSpeech: partOfSpeech as PartOfSpeech,
       definition,
       example,
+      examples,
       updatedAt: now
     };
   }
@@ -305,7 +361,7 @@ export class VocabRepository {
       ORDER BY display_word COLLATE NOCASE ASC
     `).all() as VocabWord[];
 
-    const defRows = this.db.prepare(`
+    const rawDefRows = this.db.prepare(`
       SELECT
         id,
         word_id as wordId,
@@ -319,7 +375,8 @@ export class VocabRepository {
         updated_at as updatedAt
       FROM vocab_definitions
       ORDER BY id ASC
-    `).all() as VocabDefinition[];
+    `).all() as Array<Omit<VocabDefinition, 'examples'>>;
+    const defRows = this.hydrateDefinitions(rawDefRows);
 
     const defMap = new Map<string, VocabDefinition[]>();
     for (const def of defRows) {

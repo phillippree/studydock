@@ -16,6 +16,16 @@ export interface VocabSense {
   partOfSpeech: PartOfSpeech;
   definition: string;
   example: string;
+  examples?: VocabExample[];
+}
+
+export type ExampleVoice = 'active' | 'passive' | 'other';
+
+export interface VocabExample {
+  id?: string;
+  example: string;
+  position: number;
+  voice: ExampleVoice;
 }
 
 export interface VocabWord {
@@ -32,7 +42,9 @@ export interface VocabDefinition {
   wordId: string;
   partOfSpeech: PartOfSpeech;
   definition: string;
+  /** First example retained for compatibility with manual-edit forms and older exports. */
   example: string;
+  examples: VocabExample[];
   source: 'gemini' | 'manual' | 'local';
   modelIdentifier?: string;
   promptVersion?: number;
@@ -58,7 +70,7 @@ export interface VocabWordWithDefinitions {
 export interface GeminiVocabSense {
   partOfSpeech: string;
   definition: string;
-  example: string;
+  examples: Array<{ example: string; voice: ExampleVoice }>;
 }
 
 export interface GeminiVocabResponse {
@@ -91,6 +103,7 @@ export interface AddDefinitionInput {
   partOfSpeech: PartOfSpeech;
   definition: string;
   example: string;
+  examples?: VocabExample[];
   source?: 'manual' | 'gemini' | 'local';
 }
 
@@ -111,6 +124,7 @@ export interface ExportWordData {
     partOfSpeech: string;
     definition: string;
     example: string;
+    examples?: VocabExample[];
     source: string;
     modelIdentifier?: string;
     generatedAt: string;

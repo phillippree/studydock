@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import DatabaseConstructor, { Database } from 'better-sqlite3';
 import { MigrationRunner } from '../../src/main/database/migrations';
 import { vocabMigrations } from '../../src/main/modes/vocab/migrations';
+import { migration001Initial } from '../../src/main/modes/vocab/migrations/001_initial';
+import { migration002DefinitionExamples } from '../../src/main/modes/vocab/migrations/002_definition_examples';
 import { VocabRepository } from '../../src/main/modes/vocab/repository';
 
 describe('Database Migrations and Starter Data', () => {
@@ -49,6 +51,23 @@ describe('Database Migrations and Starter Data', () => {
     runner.runMigrations(vocabMigrations);
     // Count should still remain initialCount - 1 (never re-seeded)
     expect(repo.getWordsCount()).toBe(initialCount - 1);
+  });
+
+  it('preserves existing single examples when adding the examples table', () => {
+    const runner = new MigrationRunner(db);
+    runner.runMigrations([migration001Initial]);
+    const word = db.prepare(`SELECT id FROM vocab_words WHERE normalized_word = 'resilient'`).get() as { id: string };
+    const original = db.prepare(`SELECT id, example FROM vocab_definitions WHERE word_id = ?`).get(word.id) as { id: string; example: string };
+
+    runner.runMigrations([migration002DefinitionExamples]);
+    const migrated = new VocabRepository(db).getDefinitionsForWord(word.id)[0];
+
+    expect(migrated.examples).toEqual([{
+      id: `example_${original.id}_1`,
+      example: original.example,
+      position: 1,
+      voice: 'other'
+    }]);
   });
 
   it('enforces cascade deletion of definitions when word is deleted', () => {

@@ -61,7 +61,10 @@ describe('Vocabulary Service Logic and Resilience', () => {
         {
           partOfSpeech: 'adjective',
           definition: 'Too great or extreme to be expressed in words.',
-          example: 'The view from the mountain peak was of ineffable beauty.'
+          examples: Array.from({ length: 6 }, (_, index) => ({
+            example: `The view from the mountain peak was of ineffable beauty, example ${index + 1}.`,
+            voice: index === 1 ? 'passive' : 'active'
+          }))
         }
       ]
     });
@@ -75,6 +78,8 @@ describe('Vocabulary Service Logic and Resilience', () => {
     const inDb = repo.getDefinitionsForWord(newWord.word.id);
     expect(inDb).toHaveLength(1);
     expect(inDb[0].source).toBe('gemini');
+    expect(inDb[0].examples).toHaveLength(6);
+    expect(inDb[0].examples[1].voice).toBe('passive');
   });
 
   it('preserves existing definitions when a refresh request fails', async () => {
@@ -131,7 +136,10 @@ describe('Vocabulary Service Logic and Resilience', () => {
           {
             partOfSpeech: 'adjective',
             definition: 'Lasting for only a limited period of time.',
-            example: 'This is a temporary measure.'
+            examples: Array.from({ length: 6 }, (_, index) => ({
+              example: `This is a temporary measure, example ${index + 1}.`,
+              voice: 'active'
+            }))
           }
         ]
       };
@@ -152,5 +160,14 @@ describe('Vocabulary Service Logic and Resilience', () => {
     const whitespaceVariation = await service.addWord({ word: '  SERENDIPITY  ' });
     expect(whitespaceVariation.isDuplicate).toBe(true);
     expect(whitespaceVariation.word.id).toBe(first.word.id);
+  });
+
+  it('adds a trimmed word to the local library without requiring a definition', async () => {
+    const added = await service.addWord({ word: '  perspicacious  ' });
+
+    expect(added.isDuplicate).toBe(false);
+    expect(added.word.displayWord).toBe('perspicacious');
+    expect(repo.findWordByNormalized('perspicacious', 'en')?.id).toBe(added.word.id);
+    expect(repo.getDefinitionsForWord(added.word.id)).toEqual([]);
   });
 });

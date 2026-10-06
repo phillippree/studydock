@@ -94,7 +94,10 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
   const handleAddWord = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmed = newWordText.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setAddFeedback({ type: 'error', text: 'Enter a word or phrase above, then choose Add Word.' });
+      return;
+    }
 
     setAddFeedback(null);
     try {
@@ -167,6 +170,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
           partOfSpeech: def.partOfSpeech,
           definition: def.definition,
           example: def.example,
+          examples: def.examples,
           source: def.source
         });
       }
@@ -542,9 +546,11 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
                           </span>
                         </div>
                         <p style={{ fontSize: '0.9rem', marginBottom: '4px' }}>{def.definition}</p>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          "{def.example}"
-                        </p>
+                        {(def.examples?.length ? def.examples : [{ example: def.example, voice: 'other' as const }]).map((item, index) => (
+                          <p key={`${def.id}-example-${index}`} style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '4px' }}>
+                            <span className="example-voice">{item.voice}</span> “{item.example}”
+                          </p>
+                        ))}
                       </div>
 
                       <button
@@ -568,19 +574,27 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
           <div style={{ flex: 1, paddingTop: '16px' }}>
             <form onSubmit={handleAddWord} style={{ maxWidth: '480px' }}>
               <div className="input-group">
-                <label className="input-label">Word or Term</label>
+                <label className="input-label" htmlFor="new-vocabulary-word">Word or Term</label>
                 <input
+                  id="new-vocabulary-word"
                   type="text"
                   className="input-text"
                   placeholder="e.g. serendipity, epiphany, resilient"
                   value={newWordText}
-                  onChange={(e) => setNewWordText(e.target.value)}
+                  onChange={(e) => {
+                    setNewWordText(e.target.value);
+                    if (addFeedback) setAddFeedback(null);
+                  }}
+                  aria-describedby="add-word-help"
                   autoFocus
                 />
+                <p id="add-word-help" style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginTop: '6px' }}>
+                  Type a word or phrase first. You can add its definition afterward.
+                </p>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                <button type="submit" className="btn btn-primary" disabled={!newWordText.trim()}>
+                <button type="submit" className="btn btn-primary">
                   <Plus size={16} />
                   Add Word
                 </button>
@@ -597,7 +611,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px'
-                }}>
+                }} role={addFeedback.type === 'error' ? 'alert' : 'status'}>
                   {addFeedback.type === 'success' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
                   <span>{addFeedback.text}</span>
                 </div>

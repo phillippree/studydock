@@ -30,6 +30,13 @@ describe('Word Quiz repository', () => {
         generated_at TEXT NOT NULL,
         updated_at TEXT
       );
+      CREATE TABLE vocab_definition_examples (
+        id TEXT PRIMARY KEY,
+        definition_id TEXT NOT NULL REFERENCES vocab_definitions(id) ON DELETE CASCADE,
+        example TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        voice TEXT NOT NULL
+      );
     `);
     repository = new WordQuizRepository(db);
   });
@@ -48,6 +55,10 @@ describe('Word Quiz repository', () => {
           id, word_id, part_of_speech, definition, example, source, generated_at
         ) VALUES (?, ?, 'noun', ?, ?, 'local', '2026-01-01T00:00:00.000Z')
       `).run(`definition-${id}`, id, definition, `Example for ${displayWord}.`);
+      db.prepare(`
+        INSERT INTO vocab_definition_examples (id, definition_id, example, position, voice)
+        VALUES (?, ?, ?, 1, 'active')
+      `).run(`example-${id}`, `definition-${id}`, `Example for ${displayWord}.`);
     }
   }
 
@@ -93,6 +104,12 @@ describe('Word Quiz repository', () => {
         partOfSpeech: 'noun',
         definition: 'Clear and easy to understand.',
         example: 'Example for lucid.',
+        examples: [{
+          id: 'example-word-1',
+          example: 'Example for lucid.',
+          position: 1,
+          voice: 'active'
+        }],
         source: 'local'
       }
     ]);

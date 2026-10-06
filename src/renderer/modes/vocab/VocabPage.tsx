@@ -110,6 +110,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
           partOfSpeech: d.partOfSpeech,
           definition: d.definition,
           example: d.example,
+          examples: d.examples,
           source: d.source
         }))
       );
@@ -291,17 +292,13 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
                       {sense.definition}
                     </div>
 
-                    {sense.example && (
-                      <div style={{
-                        fontSize: '0.95rem',
-                        color: 'var(--text-secondary)',
-                        fontStyle: 'italic',
-                        paddingLeft: '12px',
-                        borderLeft: '2px solid var(--border-default)'
-                      }}>
-                        "{sense.example}"
+                    {(sense.examples?.length ? sense.examples : sense.example ? [{ example: sense.example, voice: 'other' as const }] : []).map((item, exampleIndex) => (
+                      <div key={`${sense.id}-example-${exampleIndex}`} style={{ display: 'flex', gap: '12px', marginTop: '10px', alignItems: 'flex-start' }}>
+                        <span className="example-voice">{item.voice}</span>
+                        <p className="vocab-example">{item.example}</p>
                       </div>
-                    )}
+                    ))}
+                    {(sense.examples?.length ?? 1) < 6 && <p className="examples-refresh-note">{sense.examples?.length ?? 1} saved example{(sense.examples?.length ?? 1) === 1 ? '' : 's'}. Refresh the definition to generate six.</p>}
                   </div>
                 ))}
               </div>

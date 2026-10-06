@@ -11,6 +11,7 @@ import {
   ExportData,
   ImportWordsResult,
   VocabDefinition,
+  VocabExample,
   VocabWord,
   VocabWordWithDefinitions
 } from '../../../shared/contracts/vocab';
@@ -142,7 +143,8 @@ export class VocabService {
           response.senses.map(sense => ({
             partOfSpeech: sense.partOfSpeech,
             definition: sense.definition,
-            example: sense.example,
+            example: sense.examples[0]?.example || '',
+            examples: sense.examples.map((item, index) => ({ ...item, position: index + 1 })),
             source: 'gemini',
             modelIdentifier: model,
             promptVersion: VOCAB_PROMPT_VERSION
@@ -164,7 +166,8 @@ export class VocabService {
             wordId: word.id,
             partOfSpeech: s.partOfSpeech as VocabDefinition['partOfSpeech'],
             definition: s.definition,
-            example: s.example,
+            example: s.examples[0]?.example || '',
+            examples: s.examples.map((item, index) => ({ ...item, position: index + 1 })),
             source: 'gemini',
             modelIdentifier: model,
             promptVersion: VOCAB_PROMPT_VERSION,
@@ -188,7 +191,7 @@ export class VocabService {
 
   public async saveDefinitionRetry(
     wordId: string,
-    senses: Array<{ partOfSpeech: string; definition: string; example: string; source?: string }>
+    senses: Array<{ partOfSpeech: string; definition: string; example: string; examples?: VocabExample[]; source?: string }>
   ): Promise<VocabWordWithDefinitions> {
     const word = this.repository.findWordById(wordId);
     if (!word) {
@@ -201,6 +204,7 @@ export class VocabService {
         partOfSpeech: s.partOfSpeech,
         definition: s.definition,
         example: s.example,
+        examples: s.examples,
         source: s.source || 'gemini',
         modelIdentifier: this.settings.getModel(),
         promptVersion: VOCAB_PROMPT_VERSION
@@ -270,7 +274,8 @@ export class VocabService {
       input.partOfSpeech,
       input.definition.trim(),
       input.example.trim(),
-      input.source || 'manual'
+      input.source || 'manual',
+      input.examples
     );
   }
 
@@ -359,6 +364,7 @@ export class VocabService {
           partOfSpeech: d.partOfSpeech,
           definition: d.definition,
           example: d.example,
+          examples: d.examples.map(({ example, position, voice }) => ({ example, position, voice })),
           source: d.source,
           modelIdentifier: d.modelIdentifier,
           generatedAt: d.generatedAt
