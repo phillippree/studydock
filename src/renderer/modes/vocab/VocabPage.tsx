@@ -10,10 +10,12 @@ import {
   Plus,
   Upload,
   Save,
-  Home
+  Home,
+  Volume2
 } from 'lucide-react';
 import { VocabWordWithDefinitions } from '../../../shared/contracts/vocab';
 import { WordLibrary } from './WordLibrary';
+import { decodeMuLawPcm } from './pronunciationAudio';
 
 interface VocabPageProps {
   onNavigateHome: () => void;
@@ -26,11 +28,79 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isSavingRetry, setIsSavingRetry] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pronunciationLoading, setPronunciationLoading] = useState(false);
+  const [pronunciationError, setPronunciationError] = useState<string | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const pronunciationRequestRef = useRef(0);
 
   // Active word tracking to prevent late responses from overwriting a different word
   const activeWordIdRef = useRef<string | null>(null);
 
+  const stopPronunciation = useCallback(() => {
+    pronunciationRequestRef.current += 1;
+    if (audioSourceRef.current) {
+      audioSourceRef.current.onended = null;
+      try { audioSourceRef.current.stop(); } catch { /* It may have already finished. */ }
+      audioSourceRef.current.disconnect();
+      audioSourceRef.current = null;
+    }
+    setPronunciationError(null);
+    setPronunciationLoading(false);
+  }, []);
+
+  useEffect(() => () => {
+    pronunciationRequestRef.current += 1;
+    if (audioSourceRef.current) {
+      try { audioSourceRef.current.stop(); } catch { /* It may have already finished. */ }
+      audioSourceRef.current.disconnect();
+    }
+    void audioContextRef.current?.close();
+  }, []);
+
+  const handlePlayPronunciation = async () => {
+    if (!currentWordState || pronunciationLoading) return;
+    const wordId = currentWordState.word.id;
+    const requestId = ++pronunciationRequestRef.current;
+    setPronunciationLoading(true);
+    setPronunciationError(null);
+    try {
+      const context = audioContextRef.current ?? new AudioContext();
+      audioContextRef.current = context;
+      await context.resume();
+      const pronunciation = await window.studydockBridge.vocabGetPronunciation(wordId);
+      if (pronunciationRequestRef.current !== requestId || activeWordIdRef.current !== wordId) return;
+      if (pronunciation.mimeType !== 'audio/mulaw' || pronunciation.sampleRate !== 8000) {
+        throw new Error('Gemini returned an unsupported pronunciation format.');
+      }
+      const binary = atob(pronunciation.data);
+      const encoded = Uint8Array.from(binary, character => character.charCodeAt(0));
+      const samples = decodeMuLawPcm(encoded);
+      const buffer = context.createBuffer(1, samples.length, pronunciation.sampleRate);
+      buffer.getChannelData(0).set(samples);
+      if (audioSourceRef.current) {
+        try { audioSourceRef.current.stop(); } catch { /* It may have already finished. */ }
+        audioSourceRef.current.disconnect();
+      }
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(context.destination);
+      source.onended = () => {
+        if (audioSourceRef.current === source) audioSourceRef.current = null;
+      };
+      audioSourceRef.current = source;
+      source.start();
+    } catch (err: unknown) {
+      if (pronunciationRequestRef.current === requestId && activeWordIdRef.current === wordId) {
+        setPronunciationError(err instanceof Error ? err.message : 'Could not play this pronunciation.');
+      }
+    } finally {
+      if (pronunciationRequestRef.current === requestId && activeWordIdRef.current === wordId) setPronunciationLoading(false);
+    }
+  };
+
   const loadRandomWord = useCallback(async (excludeCurrent = true) => {
+    stopPronunciation();
     setIsLoading(true);
     setErrorMessage(null);
     try {
@@ -50,7 +120,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentWordState]);
+  }, [currentWordState, stopPronunciation]);
 
   // Load first word on mount
   useEffect(() => {
@@ -126,6 +196,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
   };
 
   const handleSelectWordFromLibrary = async (wordId: string) => {
+    stopPronunciation();
     setIsLoading(true);
     setErrorMessage(null);
     activeWordIdRef.current = wordId;
@@ -249,20 +320,34 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
 
             {/* Prominent Word Name */}
             <div style={{ marginBottom: '28px' }}>
-              <h1 style={{
-                fontSize: '2.8rem',
-                fontFamily: 'Georgia, serif',
-                fontWeight: 800,
-                letterSpacing: '-0.03em',
-                lineHeight: 1.1,
-                color: 'var(--text-primary)',
-                wordBreak: 'break-word'
-              }}>
-                {currentWordState.word.displayWord}
-              </h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                <h1 style={{
+                  fontSize: '2.8rem',
+                  fontFamily: 'Georgia, serif',
+                  fontWeight: 800,
+                  letterSpacing: '-0.03em',
+                  lineHeight: 1.1,
+                  color: 'var(--text-primary)',
+                  wordBreak: 'break-word'
+                }}>
+                  {currentWordState.word.displayWord}
+                </h1>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={handlePlayPronunciation}
+                  disabled={pronunciationLoading}
+                  title="Generate and play this word’s pronunciation with Gemini; audio is cached for offline replay"
+                  aria-label={`Play pronunciation of ${currentWordState.word.displayWord}`}
+                >
+                  <Volume2 size={16} />
+                  {pronunciationLoading ? 'Generating audio…' : 'Hear pronunciation'}
+                </button>
+              </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginTop: '4px' }}>
                 Language: {currentWordState.word.language.toUpperCase()}
               </div>
+              <p className="pronunciation-note">First play sends this word to Gemini and may use API quota. Generated audio is saved for offline replay.</p>
+              {pronunciationError && <p className="pronunciation-error" role="alert">{pronunciationError}</p>}
             </div>
 
             {/* Senses / Definitions */}

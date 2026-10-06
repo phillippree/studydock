@@ -6,6 +6,7 @@ import { GeminiClient } from '../../gemini/client';
 import { SettingsService } from '../../settings/service';
 import { ModeDescriptor } from '../../../shared/contracts/modes';
 import { vocabMigrations } from './migrations';
+import { VocabPronunciationService } from './pronunciation';
 
 export const vocabModeDescriptor: ModeDescriptor = {
   id: 'vocab',
@@ -22,6 +23,7 @@ export function registerVocabMode(
 ): { service: VocabService; repository: VocabRepository; migrations: typeof vocabMigrations } {
   const repository = new VocabRepository(db);
   const service = new VocabService(repository, gemini, settings);
+  const pronunciationService = new VocabPronunciationService(repository, gemini);
 
   // Register validated IPC handlers for vocabulary operations
   ipcMain.handle('vocab:getRandomWord', async (_event, options) => {
@@ -118,6 +120,16 @@ export function registerVocabMode(
 
   ipcMain.handle('vocab:exportData', async () => {
     return service.exportData();
+  });
+
+  ipcMain.handle('vocab:getPronunciation', async (event, wordId: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame) {
+      throw new Error('Unauthorized pronunciation request');
+    }
+    if (typeof wordId !== 'string' || !wordId.trim() || wordId.length > 128) {
+      throw new Error('Invalid word identifier for pronunciation');
+    }
+    return pronunciationService.getPronunciation(wordId);
   });
 
   return {

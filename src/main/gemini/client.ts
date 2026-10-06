@@ -11,6 +11,13 @@ export interface GenerateStructuredRequest<T> {
   schemaValidator: (rawJson: unknown) => T;
 }
 
+export interface GenerateSpeechRequest {
+  text: string;
+  language: string;
+  model?: string;
+  voice?: string;
+}
+
 export class GeminiClient {
   private logGemini(direction: 'REQUEST' | 'RESPONSE' | 'ERROR', details: unknown, apiKey?: string): void {
     const redact = (value: unknown): unknown => {
@@ -55,6 +62,56 @@ export class GeminiClient {
 
   public getApiKey(): string | null {
     return secretsService.getKey();
+  }
+
+  public async generateSpeech(request: GenerateSpeechRequest): Promise<{ data: Buffer; mimeType: string }> {
+    const key = this.getApiKey();
+    if (!key) throw new Error('Gemini API key is missing. Please configure your API key in Settings.');
+
+    const model = request.model || 'gemini-3.8-flash-lite-tts';
+    const voice = request.voice || 'Kore';
+    try {
+      const ai = new GoogleGenAI({ apiKey: key });
+      const payload = {
+        model,
+        input: [{
+          type: 'user_input' as const,
+          content: [{ type: 'text' as const, text: request.text }]
+        }],
+        response_format: { type: 'audio' as const },
+        generation_config: {
+          speech_config: [{ voice, language: request.language }]
+        },
+        store: false,
+        stream: false
+      };
+      this.logGemini('REQUEST', {
+        operation: 'interactions.create', model, text: request.text,
+        language: request.language, voice, responseFormat: payload.response_format
+      }, key);
+
+      const response = await ai.interactions.create(payload, {
+        timeout_ms: 30000,
+        retries: { strategy: 'none' }
+      });
+      const audio = 'output_audio' in response ? response.output_audio : undefined;
+      if (!audio?.data) {
+        throw new Error('Gemini did not return pronunciation audio.');
+      }
+      const data = Buffer.from(audio.data, 'base64');
+      if (data.length < 12 || data.toString('ascii', 0, 4) !== 'RIFF' || data.toString('ascii', 8, 12) !== 'WAVE') {
+        throw new Error('Gemini returned an unsupported pronunciation audio format.');
+      }
+      this.logGemini('RESPONSE', {
+        operation: 'interactions.create', model, mimeType: audio.mime_type ?? 'audio/wav',
+        sampleRate: audio.sample_rate, byteLength: data.length
+      }, key);
+      return { data, mimeType: 'audio/wav' };
+    } catch (err: unknown) {
+      const raw = err instanceof Error ? err.message : String(err);
+      this.logGemini('ERROR', { operation: 'interactions.create', model, message: raw }, key);
+      throw new Error(`Gemini pronunciation request failed: ${this.sanitizeErrorMessage(raw.split(key).join('[REDACTED]'))}`);
+    }
   }
 
   public async testConnection(modelOverride?: string, apiKeyOverride?: string): Promise<TestConnectionResult> {

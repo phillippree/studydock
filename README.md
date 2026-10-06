@@ -79,6 +79,8 @@ StudyDock application data/
     gemini-key.enc
   backups/
   storage/
+    audio/
+      vocab-pronunciation/  # Compressed μ-law audio generated on demand
     modes/
       vocab/
 ```
@@ -86,6 +88,7 @@ StudyDock application data/
 - **Database (`database/studydock.sqlite`):** Words, definitions, and migration history managed with SQLite WAL mode and foreign-key enforcement.
 - **Settings (`settings/preferences.json`):** Application preferences such as the selected Gemini model (`gemini-2.5-flash`, `gemini-2.0-flash`, etc.).
 - **Secrets (`secrets/gemini-key.enc`):** Gemini API key encrypted using Electron's OS-backed `safeStorage` (Keychain on macOS, DPAPI on Windows, Secret Service on Linux). If OS encryption is unavailable, keys are kept in session memory only and never written unencrypted to disk.
+- **Pronunciation audio (`storage/audio/vocab-pronunciation/`):** On first playback, StudyDock asks Gemini's text-to-speech service for its default WAV audio, converts it in memory to compact 8 kHz μ-law audio, and saves only those compressed bytes (`.ulaw` files). The renderer decodes the cached bytes in memory for playback; it does not create an uncompressed audio file. Later playback uses the cached file and works offline. The word text and language are sent to Gemini when the audio is first generated; this uses Gemini API quota. Generated pronunciation files are separate from the word database and ordinary word exports.
 
 ### Files created by Electron and Chromium
 
@@ -107,7 +110,7 @@ Electron also keeps a Chromium browser profile alongside StudyDock's application
 | `Network Persistent State` | Persistent state used by Chromium's network stack. |
 | `declarative_performance_observer.db`, `declarative_performance_observer.db-journal` | Chromium performance-observation data and its temporary database journal. |
 | `backups/` | Reserved for StudyDock database backups. |
-| `storage/` | Reserved for persistent files owned by individual StudyDock modes. |
+| `storage/` | Persistent files owned by StudyDock modes, including generated pronunciation audio. |
 
 Files ending in `-wal` or `-journal` are database support files. Let the app and SQLite manage them; do not manually remove them while StudyDock is open. This README describes file purposes only and does not include a machine-specific storage location.
 

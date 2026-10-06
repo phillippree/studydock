@@ -415,6 +415,8 @@ html, body, #root {
 .example-voice { flex: 0 0 auto; color: var(--text-dim); font-size: .68rem; font-style: normal; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); }
 .vocab-example { color: var(--text-secondary); font-size: .94rem; font-style: italic; line-height: 1.5; padding-left: 12px; border-left: 2px solid var(--border-default); }
 .examples-refresh-note { color: var(--text-dim); font-size: .76rem; margin: 10px 0 0; }
+.pronunciation-error { margin-top: 8px; color: var(--error-text); font-size: .84rem; }
+.pronunciation-note { margin-top: 6px; color: var(--text-dim); font-size: .76rem; }
 .quiz-example { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; }
 .expressions-page { width: min(1080px, 100%); min-height: 100%; margin: 0 auto; padding: 36px 28px 48px; display: flex; flex-direction: column; gap: 26px; }
 .expressions-heading, .expressions-title, .expressions-library-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }

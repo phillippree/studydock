@@ -29,6 +29,7 @@ const api: StudyDockAPI = {
   vocabDeleteDefinition: (definitionId) => ipcRenderer.invoke('vocab:deleteDefinition', definitionId),
   vocabImportWords: (content, language) => ipcRenderer.invoke('vocab:importWords', { content, language }),
   vocabExportData: () => ipcRenderer.invoke('vocab:exportData'),
+  vocabGetPronunciation: (wordId) => ipcRenderer.invoke('vocab:getPronunciation', wordId),
 
   // Word Quiz Mode
   wordQuizGetRandomWord: (excludeWordId) => ipcRenderer.invoke('wordQuiz:getRandomWord', excludeWordId),

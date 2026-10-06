@@ -8,6 +8,7 @@ import {
   ExportData,
   ImportWordsResult,
   VocabDefinition,
+  VocabPronunciationAudio,
   VocabWord,
   VocabWordWithDefinitions,
   VerifyAndAddWordResult
@@ -43,6 +44,7 @@ export interface StudyDockAPI {
   vocabDeleteDefinition(definitionId: string): Promise<{ success: boolean }>;
   vocabImportWords(content: string, language?: string): Promise<ImportWordsResult>;
   vocabExportData(): Promise<ExportData>;
+  vocabGetPronunciation(wordId: string): Promise<VocabPronunciationAudio>;
 
   // Word Quiz mode
   wordQuizGetRandomWord(excludeWordId?: string): Promise<VocabWord | null>;

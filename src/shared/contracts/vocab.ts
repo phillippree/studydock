@@ -69,6 +69,14 @@ export interface VocabWordWithDefinitions {
   generationError?: string;
 }
 
+export interface VocabPronunciationAudio {
+  /** Base64 μ-law audio; no filesystem path is exposed to the renderer. */
+  data: string;
+  mimeType: 'audio/mulaw';
+  sampleRate: 8000;
+  cached: boolean;
+}
+
 export interface GeminiVocabSense {
   partOfSpeech: string;
   definition: string;

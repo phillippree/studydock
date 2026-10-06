@@ -43,6 +43,10 @@ class StoragePaths {
     return path.join(this.getRoot(), 'storage', 'modes', modeId);
   }
 
+  public getVocabPronunciationDir(): string {
+    return path.join(this.getRoot(), 'storage', 'audio', 'vocab-pronunciation');
+  }
+
   public ensureDirectories(): void {
     const root = this.getRoot();
     const dirs = [
@@ -52,7 +56,8 @@ class StoragePaths {
       path.join(root, 'secrets'),
       path.join(root, 'backups'),
       path.join(root, 'storage'),
-      path.join(root, 'storage', 'modes')
+      path.join(root, 'storage', 'modes'),
+      this.getVocabPronunciationDir()
     ];
 
     for (const dir of dirs) {
