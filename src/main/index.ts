@@ -7,6 +7,7 @@ import { MigrationRunner } from './database/migrations';
 import { geminiClient } from './gemini/client';
 import { settingsService } from './settings/service';
 import { registerVocabMode, vocabModeDescriptor } from './modes/vocab';
+import { registerWordQuizMode, wordQuizModeDescriptor } from './modes/word-quiz';
 import { ModeDescriptor } from '../shared/contracts/modes';
 
 // Set application identity
@@ -18,7 +19,8 @@ export function getMainWindow(): BrowserWindow | null {
 }
 
 const REGISTERED_MODES: ModeDescriptor[] = [
-  vocabModeDescriptor
+  vocabModeDescriptor,
+  wordQuizModeDescriptor
 ];
 
 async function createWindow(): Promise<BrowserWindow> {
@@ -131,6 +133,7 @@ async function initializeApp(): Promise<void> {
   // Register and run migrations for all modes
   const migrationRunner = new MigrationRunner(db);
   const vocabMode = registerVocabMode(db, geminiClient, settingsService);
+  registerWordQuizMode(db);
 
   migrationRunner.runMigrations([
     ...vocabMode.migrations

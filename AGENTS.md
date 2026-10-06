@@ -16,6 +16,12 @@ Use the scripts in `package.json` and the committed lockfile; verify installed A
 
 Do not claim packaging works on platforms that were not tested. Account for the different Node/Electron native ABIs when diagnosing SQLite failures; do not rebuild dependencies blindly.
 
+## Git workflow
+
+- When the user says “add to git,” stage the current project changes and create a commit with a concise, descriptive message.
+- Review the staged diff before committing. Preserve unrelated changes and avoid staging secrets, generated output, dependencies, runtime data, or user files that are outside the requested work.
+- Do not push, publish, or otherwise upload commits unless the user explicitly asks.
+
 ## TypeScript and code style
 
 - Write application code in TypeScript and React interfaces in TSX. Compile to JavaScript before execution; do not add runtime TypeScript loaders.

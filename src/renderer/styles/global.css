@@ -384,3 +384,25 @@ html, body, #root {
 .gemini-summary { color: var(--text-secondary); font-size: 0.85rem; margin-top: 6px; }
 #gemini-settings-panel:not([hidden]) { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-default); }
 #gemini-settings-panel[hidden] { display: none; }
+
+/* Word Quiz */
+.quiz-page { width: min(820px, 100%); min-height: 100%; margin: 0 auto; padding: 36px 24px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+.quiz-heading { display: flex; align-items: center; gap: 14px; }
+.quiz-heading h1 { font-size: 1.55rem; font-weight: 600; }
+.quiz-heading p { color: var(--text-secondary); margin-top: 3px; }
+.quiz-icon { width: 46px; height: 46px; display: grid; place-items: center; flex: 0 0 auto; border-radius: var(--radius-md); color: var(--accent-primary); background: var(--info-bg); }
+.quiz-card { width: 100%; min-height: 330px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 28px; }
+.quiz-eyebrow { color: var(--text-dim); font-size: .78rem; font-weight: 600; letter-spacing: .08em; }
+.quiz-word { color: var(--text-primary); font: 500 clamp(2.8rem, 8vw, 4.4rem)/1.2 Georgia, serif; margin: 18px 0 10px; overflow-wrap: anywhere; }
+.quiz-language { color: var(--text-secondary); }
+.quiz-answer { width: min(560px, 100%); margin: 26px auto 0; padding: 20px; text-align: left; background: var(--bg-tertiary); border-radius: var(--radius-md); }
+.quiz-sense + .quiz-sense { border-top: 1px solid var(--border-default); margin-top: 16px; padding-top: 16px; }
+.quiz-pos { color: var(--accent-primary); font-size: .82rem; font-weight: 600; text-transform: capitalize; }
+.quiz-sense p { margin-top: 7px; }
+.quiz-example { color: var(--text-secondary); font-style: italic; }
+.quiz-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
+.quiz-error { display: flex; gap: 8px; align-items: center; color: var(--error-text); margin-top: 18px; }
+.quiz-empty > svg { color: var(--accent-primary); margin-bottom: 16px; }
+.quiz-empty h2 { margin-bottom: 8px; }
+.quiz-empty > p { max-width: 480px; color: var(--text-secondary); }
+@media (max-width: 520px) { .quiz-page { padding: 24px 16px; } .quiz-card { padding: 30px 18px; } .quiz-answer { padding: 16px; } }

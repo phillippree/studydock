@@ -11,6 +11,7 @@ import {
   VocabWord,
   VocabWordWithDefinitions
 } from './vocab';
+import { WordQuizAnswer } from './wordQuiz';
 
 export interface StudyDockAPI {
   // Modes
@@ -39,6 +40,10 @@ export interface StudyDockAPI {
   vocabDeleteDefinition(definitionId: string): Promise<{ success: boolean }>;
   vocabImportWords(content: string, language?: string): Promise<ImportWordsResult>;
   vocabExportData(): Promise<ExportData>;
+
+  // Word Quiz mode
+  wordQuizGetRandomWord(excludeWordId?: string): Promise<VocabWord | null>;
+  wordQuizRevealDefinition(wordId: string): Promise<WordQuizAnswer['definitions']>;
 }
 
 declare global {

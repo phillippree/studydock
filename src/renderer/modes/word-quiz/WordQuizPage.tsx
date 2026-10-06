@@ -1,0 +1,88 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { Brain, Eye, EyeOff, ArrowRight, AlertCircle, BookOpen } from 'lucide-react';
+import { VocabDefinition, VocabWord } from '../../../shared/contracts/vocab';
+
+interface WordQuizPageProps {
+  onNavigateHome: () => void;
+}
+
+export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
+  const [word, setWord] = useState<VocabWord | null>(null);
+  const [definitions, setDefinitions] = useState<VocabDefinition[]>([]);
+  const [revealed, setRevealed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadNext = useCallback(async (excludeWordId?: string) => {
+    setLoading(true);
+    setError(null);
+    setRevealed(false);
+    setDefinitions([]);
+    try {
+      const nextWord = await window.studydockBridge.wordQuizGetRandomWord(excludeWordId);
+      setWord(nextWord);
+    } catch {
+      setError('Could not load a quiz word. Please try again.');
+      setWord(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadNext(); }, [loadNext]);
+
+  const reveal = async () => {
+    if (!word || revealed) return;
+    setError(null);
+    try {
+      const answer = await window.studydockBridge.wordQuizRevealDefinition(word.id);
+      setDefinitions(answer);
+      setRevealed(true);
+    } catch {
+      setError('Could not reveal this definition. It may have been removed from your library.');
+    }
+  };
+
+  return (
+    <div className="quiz-page">
+      <div className="quiz-heading">
+        <span className="quiz-icon"><Brain size={22} /></span>
+        <div><h1>Word Quiz</h1><p>Think of the meaning, then reveal the answer.</p></div>
+      </div>
+
+      {loading ? (
+        <section className="card quiz-card" aria-live="polite"><div className="spinner" /><p>Finding a word…</p></section>
+      ) : word ? (
+        <section className="card quiz-card" aria-live="polite">
+          <div className="quiz-eyebrow">YOUR WORD</div>
+          <div className="quiz-word">{word.displayWord}</div>
+          <div className="quiz-language">Try to recall its meaning before revealing it.</div>
+
+          {revealed && <div className="quiz-answer">
+            {definitions.map(definition => <article className="quiz-sense" key={definition.id}>
+              <span className="quiz-pos">{definition.partOfSpeech}</span>
+              <p>{definition.definition}</p>
+              {definition.example && <p className="quiz-example">“{definition.example}”</p>}
+            </article>)}
+          </div>}
+
+          {error && <p className="quiz-error" role="alert"><AlertCircle size={16} />{error}</p>}
+          <div className="quiz-actions">
+            {!revealed && <button className="btn btn-primary" onClick={() => void reveal()}><Eye size={16} />Reveal definition</button>}
+            {revealed && <button className="btn btn-secondary" onClick={() => { setRevealed(false); setDefinitions([]); }}><EyeOff size={16} />Hide definition</button>}
+            <button className="btn btn-secondary" onClick={() => void loadNext(word.id)}><ArrowRight size={16} />Next word</button>
+          </div>
+        </section>
+      ) : (
+        <section className="card quiz-card quiz-empty">
+          <BookOpen size={34} />
+          <h2>No defined words yet</h2>
+          <p>Add words and save their definitions in Vocabulary mode. Word Quiz uses that same library.</p>
+          {error && <p className="quiz-error" role="alert">{error}</p>}
+        </section>
+      )}
+    </div>
+  );
+};
+
+export default WordQuizPage;

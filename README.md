@@ -2,7 +2,7 @@
 
 **StudyDock** is an offline-first desktop personal learning hub built with **Electron**, **TypeScript**, **React**, **Vite**, **SQLite**, and the **Google Gemini SDK**.
 
-The application features an extensible, modular architecture where independent learning modes can be plugged in without modifying existing mode implementation files. **Vocabulary** is the foundational mode.
+The application features an extensible, modular architecture where independent learning modes can be plugged in without modifying existing mode implementation files. **Vocabulary** and **Word Quiz** use the same local word library.
 
 ---
 
@@ -224,6 +224,10 @@ modeRegistry['mymode'] = {
 };
 ```
 The application shell, landing page cards, header navigation, and error boundary will automatically detect, list, and render your new mode.
+
+### Word Quiz
+
+Word Quiz selects randomly from vocabulary entries that already have one or more saved definitions. It sends only the word to the renderer at first. When the user chooses **Reveal definition**, the main process reads and returns its saved meanings. Hiding the answer clears it from the screen state; selecting another word resets the reveal state. The mode has its own renderer and main-process entry points, reads the existing vocabulary tables, adds no duplicate word data or migrations, and does not call Gemini.
 
 ---
 

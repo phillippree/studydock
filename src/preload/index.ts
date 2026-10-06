@@ -27,7 +27,11 @@ const api: StudyDockAPI = {
   vocabEditDefinition: (input) => ipcRenderer.invoke('vocab:editDefinition', input),
   vocabDeleteDefinition: (definitionId) => ipcRenderer.invoke('vocab:deleteDefinition', definitionId),
   vocabImportWords: (content, language) => ipcRenderer.invoke('vocab:importWords', { content, language }),
-  vocabExportData: () => ipcRenderer.invoke('vocab:exportData')
+  vocabExportData: () => ipcRenderer.invoke('vocab:exportData'),
+
+  // Word Quiz Mode
+  wordQuizGetRandomWord: (excludeWordId) => ipcRenderer.invoke('wordQuiz:getRandomWord', excludeWordId),
+  wordQuizRevealDefinition: (wordId) => ipcRenderer.invoke('wordQuiz:revealDefinition', wordId)
 };
 
 contextBridge.exposeInMainWorld('studydockBridge', api);

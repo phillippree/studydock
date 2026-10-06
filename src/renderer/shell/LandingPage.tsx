@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getAllRegisteredModes } from './modeRegistry';
 import {
   BookOpen,
+  Brain,
   ArrowRight,
   Key,
   ShieldCheck,
@@ -202,7 +203,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
                     justifyContent: 'center',
                     color: 'var(--accent-primary)'
                   }}>
-                    <BookOpen size={22} />
+                    {mode.iconName === 'Brain' ? <Brain size={22} /> : <BookOpen size={22} />}
                   </div>
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{mode.displayName}</h3>
                 </div>

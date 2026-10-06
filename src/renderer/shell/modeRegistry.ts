@@ -16,6 +16,16 @@ export const modeRegistry: Record<string, RegisteredMode> = {
       order: 1
     },
     component: React.lazy(() => import('../modes/vocab/VocabPage'))
+  },
+  'word-quiz': {
+    descriptor: {
+      id: 'word-quiz',
+      displayName: 'Word Quiz',
+      description: 'Recall a word’s meaning before revealing its saved definition.',
+      iconName: 'Brain',
+      order: 2
+    },
+    component: React.lazy(() => import('../modes/word-quiz'))
   }
 };
 
