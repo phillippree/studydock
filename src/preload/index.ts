@@ -9,7 +9,8 @@ const api: StudyDockAPI = {
   getSettings: () => ipcRenderer.invoke('settings:getSettings'),
   saveApiKey: (input) => ipcRenderer.invoke('settings:saveApiKey', input),
   removeApiKey: () => ipcRenderer.invoke('settings:removeApiKey'),
-  testConnection: (model) => ipcRenderer.invoke('settings:testConnection', model),
+  testConnection: (model, apiKey) => ipcRenderer.invoke('settings:testConnection', { model, apiKey }),
+  listModels: (apiKey) => ipcRenderer.invoke('settings:listModels', { apiKey }),
   setModel: (model) => ipcRenderer.invoke('settings:setModel', model),
   openStorageFolder: () => ipcRenderer.invoke('settings:openStorageFolder'),
 

@@ -1,5 +1,5 @@
 import { ModeDescriptor } from './modes';
-import { GeminiSettings, SaveKeyInput, TestConnectionResult } from './settings';
+import { ListModelsResult, GeminiSettings, SaveKeyInput, TestConnectionResult } from './settings';
 import {
   AddDefinitionInput,
   AddWordInput,
@@ -20,7 +20,8 @@ export interface StudyDockAPI {
   getSettings(): Promise<GeminiSettings>;
   saveApiKey(input: SaveKeyInput): Promise<{ success: boolean; error?: string }>;
   removeApiKey(): Promise<{ success: boolean }>;
-  testConnection(model?: string): Promise<TestConnectionResult>;
+  testConnection(model?: string, apiKey?: string): Promise<TestConnectionResult>;
+  listModels(apiKey?: string): Promise<ListModelsResult>;
   setModel(model: string): Promise<{ success: boolean }>;
   openStorageFolder(): Promise<{ success: boolean }>;
 

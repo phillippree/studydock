@@ -212,3 +212,11 @@ To verify live connectivity with the Google Gemini API:
 4. Click **Save Key** to persist it using OS-backed encryption.
 5. Click **Test Connection**. StudyDock sends a minimal ping request and reports success along with the measured response latency.
 6. Open **Vocabulary Mode** and click **Next random word** or add a custom word to query structured definitions in real time.
+
+## Testing a Gemini key before saving
+
+Paste a key into the Gemini settings field and click **Test Connection**. The entered key takes precedence over any saved key and is not persisted by testing. An empty field tests the saved key. Testing makes one small Gemini request, may incur API usage, and has a 15-second request timeout. Save Key remains a separate action.
+
+## Gemini model selection
+
+New installations default to `gemini-3.5-flash-lite`. Existing model preferences are preserved: if a legacy model fails, select a current model manually. **Refresh available models** queries Google using the entered key, or the saved key when the field is empty, without storing the entered key. The list filters for Gemini generateContent models suitable for text; listing does not guarantee generation access or structured-output support. Run **Test Connection** to verify generation access. Google restricts older 2.5 models for some projects. See https://ai.google.dev/gemini-api/docs/models.

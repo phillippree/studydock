@@ -2,14 +2,14 @@ import fs from 'fs';
 import { shell } from 'electron';
 import { storagePaths } from '../storage/paths';
 import { secretsService } from './secrets';
-import { GeminiSettings, SaveKeyInput } from '../../shared/contracts/settings';
+import { DEFAULT_GEMINI_MODEL, GeminiSettings, SaveKeyInput } from '../../shared/contracts/settings';
 
 interface UserPreferences {
   model: string;
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
-  model: 'gemini-2.5-flash'
+  model: DEFAULT_GEMINI_MODEL
 };
 
 export class SettingsService {

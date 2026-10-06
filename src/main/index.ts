@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'path';
+import { connectionTestSchema } from './gemini/connectionTest';
 import { storagePaths } from './storage/paths';
 import { getDatabase, closeDatabase } from './database/connection';
 import { MigrationRunner } from './database/migrations';
@@ -90,8 +91,18 @@ function registerSettingsHandlers(): void {
     return settingsService.removeApiKey();
   });
 
-  ipcMain.handle('settings:testConnection', async (_event, model) => {
-    return geminiClient.testConnection(typeof model === 'string' ? model : undefined);
+  ipcMain.handle('settings:testConnection', async (event, input: unknown) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
+      throw new Error('Unauthorized connection test');
+    }
+    const request = connectionTestSchema.parse(input);
+    return geminiClient.testConnection(request.model, request.apiKey);
+  });
+
+  ipcMain.handle('settings:listModels', async (event, input: unknown) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error('Unauthorized model discovery');
+    const request = connectionTestSchema.pick({ apiKey: true }).parse(input);
+    return geminiClient.listModels(request.apiKey);
   });
 
   ipcMain.handle('settings:setModel', async (_event, model) => {

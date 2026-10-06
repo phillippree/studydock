@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { secretsService } from '../settings/secrets';
 import { settingsService } from '../settings/service';
-import { TestConnectionResult } from '../../shared/contracts/settings';
+import { AvailableModel, ListModelsResult, TestConnectionResult } from '../../shared/contracts/settings';
 
 export interface GenerateStructuredRequest<T> {
   prompt: string;
@@ -12,79 +12,52 @@ export interface GenerateStructuredRequest<T> {
 }
 
 export class GeminiClient {
+  public async listModels(apiKeyOverride?: string): Promise<ListModelsResult> {
+    const key = apiKeyOverride?.trim() || this.getApiKey();
+    if (!key) return { success: false, models: [], error: 'Enter a key or save one before refreshing models.' };
+    try {
+      const ai = new GoogleGenAI({ apiKey: key });
+      const pager = await ai.models.list({ config: { pageSize: 100, httpOptions: { timeout: 15000, retryOptions: { attempts: 1 } } } });
+      const models: AvailableModel[] = [];
+      for await (const model of pager) {
+        const id = model.name?.replace(/^models\//, '');
+        if (!id?.startsWith('gemini-') || !model.supportedActions?.includes('generateContent') || /image|tts|audio|live|robotics|computer-use|transcribe|omni/i.test(id)) continue;
+        models.push({ id, name: model.displayName || id, description: model.description || 'Gemini text model' });
+      }
+      return { success: true, models: [...new Map(models.map(m => [m.id, m])).values()].sort((a, b) => a.name.localeCompare(b.name)) };
+    } catch (err: unknown) {
+      const raw = err instanceof Error ? err.message : String(err);
+      return { success: false, models: [], error: this.sanitizeErrorMessage(new Error(raw.split(key).join('[REDACTED]'))) };
+    }
+  }
+
   public getApiKey(): string | null {
     return secretsService.getKey();
   }
 
   public async testConnection(modelOverride?: string, apiKeyOverride?: string): Promise<TestConnectionResult> {
-    const key = apiKeyOverride || this.getApiKey();
-    if (!key) {
-      return {
-        success: false,
-        message: 'No API key provided. Please enter and save your Gemini API key.'
-      };
-    }
-
+    const key = apiKeyOverride?.trim() || this.getApiKey();
+    if (!key) return { success: false, message: 'Enter a Gemini API key or save one first.' };
     const model = modelOverride || settingsService.getModel();
     const startTime = Date.now();
-
     try {
-      // Test using @google/genai first, fallback to @google/generative-ai
-      try {
-        const ai = new GoogleGenAI({ apiKey: key });
-        const response = await ai.models.generateContent({
-          model,
-          contents: 'Respond with exactly: {"status":"ok"}',
-          config: {
-            responseMimeType: 'application/json',
-            temperature: 0.1
-          }
-        });
-
-        const text = response.text || '';
-        if (text) {
-          const latencyMs = Date.now() - startTime;
-          return {
-            success: true,
-            message: `Successfully connected to Gemini API using ${model}!`,
-            modelUsed: model,
-            latencyMs
-          };
-        }
-      } catch (errGenAi) {
-        // Fallback to @google/generative-ai
-        const genAI = new GoogleGenerativeAI(key);
-        const genModel = genAI.getGenerativeModel({
-          model,
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.1
-          }
-        });
-        const result = await genModel.generateContent('Respond with exactly: {"status":"ok"}');
-        const text = result.response.text();
-        if (text) {
-          const latencyMs = Date.now() - startTime;
-          return {
-            success: true,
-            message: `Successfully connected to Gemini API using ${model}!`,
-            modelUsed: model,
-            latencyMs
-          };
-        }
-        throw errGenAi;
-      }
-
+      const ai = new GoogleGenAI({ apiKey: key });
+      const response = await ai.models.generateContent({
+        model,
+        contents: 'Reply with exactly OK.',
+        config: { maxOutputTokens: 64, httpOptions: { timeout: 15000, retryOptions: { attempts: 1 } } }
+      });
+      if (!response.text?.trim()) return { success: false, message: 'Gemini returned no text. Try another model.' };
       return {
-        success: false,
-        message: 'Received an empty response from Gemini API.'
+        success: true,
+        message: `Gemini accepted the key and responded using ${model}. ${apiKeyOverride ? 'The entered key was tested without saving it.' : 'Your saved key was tested.'}`,
+        modelUsed: model,
+        latencyMs: Date.now() - startTime
       };
     } catch (err: unknown) {
-      const errorMsg = this.sanitizeErrorMessage(err);
-      return {
-        success: false,
-        message: `Connection test failed: ${errorMsg}`
-      };
+      const raw = err instanceof Error ? err.message : String(err);
+      const redacted = raw.split(key).join('[REDACTED]');
+      return { success: false, message: `Connection test failed: ${this.sanitizeErrorMessage(new Error(redacted))}` };
     }
   }
 

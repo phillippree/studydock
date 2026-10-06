@@ -15,7 +15,7 @@ import {
   Trash2,
   Cpu
 } from 'lucide-react';
-import { GeminiSettings, SUPPORTED_GEMINI_MODELS, TestConnectionResult } from '../../shared/contracts/settings';
+import { AvailableModel, DEFAULT_GEMINI_MODEL, GeminiSettings, SUPPORTED_GEMINI_MODELS, TestConnectionResult } from '../../shared/contracts/settings';
 
 interface LandingPageProps {
   onOpenMode: (modeId: string) => void;
@@ -26,18 +26,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
   const [settings, setSettings] = useState<GeminiSettings | null>(null);
   const [keyInput, setKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_GEMINI_MODEL);
   const [sessionOnly, setSessionOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  const [modelOptions, setModelOptions] = useState<AvailableModel[]>(SUPPORTED_GEMINI_MODELS);
+
+  const handleRefreshModels = async () => {
+    setIsLoading(true);
+    setMessage(null);
+    try {
+      const result = await window.studydockBridge.listModels(keyInput.trim() || undefined);
+      if (!result.success) { setMessage({ type: 'error', text: result.error || 'Unable to refresh models.' }); return; }
+      setModelOptions(result.models);
+      setTestResult(null);
+      setMessage({ type: 'info', text: result.models.length ? 'Models refreshed. Select a model and test it to confirm generation access.' : 'No compatible text models were returned for this key.' });
+    } catch { setMessage({ type: 'error', text: 'Unable to refresh models. Try again.' }); }
+    finally { setIsLoading(false); }
+  };
 
   const loadSettings = async () => {
     try {
       if (window.studydockBridge) {
         const s = await window.studydockBridge.getSettings();
         setSettings(s);
-        setSelectedModel(s.model || 'gemini-2.5-flash');
+        setSelectedModel(s.model || DEFAULT_GEMINI_MODEL);
         setSessionOnly(s.isSessionOnly);
       }
     } catch (err: unknown) {
@@ -104,7 +119,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
 
     try {
       // If user typed a key in input, test with that, otherwise test saved key
-      const result = await window.studydockBridge.testConnection(selectedModel);
+      const result = await window.studydockBridge.testConnection(selectedModel, keyInput.trim() || undefined);
       setTestResult(result);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Connection test failed';
@@ -119,11 +134,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
 
   const handleModelChange = async (newModel: string) => {
     setSelectedModel(newModel);
+    setTestResult(null);
     try {
       await window.studydockBridge.setModel(newModel);
       await loadSettings();
     } catch (err) {
-      console.error('Failed to change model:', err);
+      setMessage({ type: 'error', text: 'Unable to save the selected model.' });
     }
   };
 
@@ -250,7 +266,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
                 className="input-text input-mono"
                 placeholder={settings?.hasKey ? 'Enter new API key to replace existing...' : 'Paste your AIzaSy... API key'}
                 value={keyInput}
-                onChange={(e) => setKeyInput(e.target.value)}
+                onChange={(e) => { setKeyInput(e.target.value); setTestResult(null); }}
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -278,12 +294,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
                 value={selectedModel}
                 onChange={(e) => handleModelChange(e.target.value)}
               >
-                {SUPPORTED_GEMINI_MODELS.map(m => (
+                {!modelOptions.some(m => m.id === selectedModel) && <option value={selectedModel}>{selectedModel} (saved; access unverified)</option>}
+                {modelOptions.map(m => (
                   <option key={m.id} value={m.id}>
                     {m.name} {m.isRecommended ? '⭐ (Recommended)' : ''}
                   </option>
                 ))}
               </select>
+              <button className="btn btn-ghost btn-sm" onClick={handleRefreshModels} disabled={isLoading || (!keyInput.trim() && !settings?.hasKey)}>Refresh available models</button>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Older 2.5 models may be restricted. Choose 3.5 Flash-Lite for a new project. Refresh uses the entered or saved key without saving it.</p>
             </div>
           </div>
 
@@ -316,6 +335,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
           </div>
         </div>
 
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '12px' }}>Test the entered key without saving it, or test your saved key when the field is empty. Testing sends a small request to Gemini and may incur API usage.</p>
+
         {/* Action Buttons */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginBottom: '16px' }}>
           <button
@@ -330,10 +351,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
           <button
             className="btn btn-secondary"
             onClick={handleTestConnection}
-            disabled={isLoading || !settings?.hasKey}
+            disabled={isLoading || (!settings?.hasKey && !keyInput.trim())}
           >
             {isLoading ? <div className="spinner" /> : <Cpu size={16} />}
-            Test Connection
+            {isLoading ? 'Please wait…' : 'Test Connection'}
           </button>
 
           {settings?.hasKey && (
