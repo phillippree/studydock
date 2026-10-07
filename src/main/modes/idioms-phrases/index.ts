@@ -6,7 +6,7 @@ import { GeminiClient } from '../../gemini/client';
 import { SettingsService } from '../../settings/service';
 import { IdiomsPhrasesRepository } from './repository';
 import { IdiomsPhrasesService } from './service';
-import { idiomsPhrasesMigration } from './migration';
+import { idiomsPhrasesExampleVoiceMigration, idiomsPhrasesMigration } from './migration';
 
 export const idiomsPhrasesModeDescriptor = IDIOMS_PHRASES_MODE;
 
@@ -36,6 +36,12 @@ export function registerIdiomsPhrasesMode(db: Database.Database, gemini: GeminiC
     }
     return service.lookupAndSave(request.expression, request.type, request.language);
   });
+  ipcMain.handle('idiomsPhrases:refreshExamples', (event, id: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame || typeof id !== 'string' || !id || id.length > 200) {
+      throw new Error('Invalid Idioms & Phrases example refresh request');
+    }
+    return service.refreshExamples(id);
+  });
   ipcMain.handle('idiomsPhrases:quizGetRandom', (event, input: unknown) => {
     if (event.senderFrame !== event.sender.mainFrame || !input || typeof input !== 'object' || Array.isArray(input)) {
       throw new Error('Invalid Idioms & Phrases quiz request');
@@ -53,5 +59,5 @@ export function registerIdiomsPhrasesMode(db: Database.Database, gemini: GeminiC
     }
     return service.revealQuizEntry(id);
   });
-  return { service, repository, migrations: [idiomsPhrasesMigration] };
+  return { service, repository, migrations: [idiomsPhrasesMigration, idiomsPhrasesExampleVoiceMigration] };
 }

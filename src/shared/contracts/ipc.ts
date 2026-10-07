@@ -59,6 +59,7 @@ export interface StudyDockAPI {
   // Idioms & Phrases mode
   idiomsPhrasesList(query?: IdiomPhraseListQuery): Promise<IdiomPhraseListPage>;
   idiomsPhrasesLookupAndSave(input: { expression: string; type: ExpressionType; language?: string }): Promise<LookupExpressionResult>;
+  idiomsPhrasesRefreshExamples(id: string): Promise<IdiomPhraseEntry>;
   idiomsPhrasesQuizGetRandom(type?: ExpressionType, excludeId?: string): Promise<IdiomPhraseQuizPrompt | null>;
   idiomsPhrasesQuizReveal(id: string): Promise<IdiomPhraseEntry>;
 }

@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { ExpressionType, IdiomPhraseEntry, IdiomPhraseExample, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt } from '../../../shared/contracts/idiomsPhrases';
+import { ExampleVoice, ExpressionType, IdiomPhraseEntry, IdiomPhraseExample, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt } from '../../../shared/contracts/idiomsPhrases';
 
 export class IdiomsPhrasesRepository {
   constructor(private readonly db: Database.Database) {}
@@ -28,7 +28,7 @@ export class IdiomsPhrasesRepository {
     if (rows.length === 0) return { entries: [], total: totalRow.total };
 
     const examples = this.db.prepare(`
-      SELECT id, entry_id AS entryId, example, position
+      SELECT id, entry_id AS entryId, example, voice, position
       FROM idioms_phrases_examples
       WHERE entry_id IN (${rows.map(() => '?').join(', ')})
       ORDER BY entry_id, position
@@ -54,7 +54,7 @@ export class IdiomsPhrasesRepository {
     `).get(normalizedExpression, type, language) as Omit<IdiomPhraseEntry, 'examples'> | undefined;
     if (!row) return null;
     const examples = this.db.prepare(`
-      SELECT id, example, position FROM idioms_phrases_examples WHERE entry_id = ? ORDER BY position
+      SELECT id, example, voice, position FROM idioms_phrases_examples WHERE entry_id = ? ORDER BY position
     `).all(row.id) as IdiomPhraseExample[];
     return { ...row, type: row.type as ExpressionType, examples };
   }
@@ -67,9 +67,27 @@ export class IdiomsPhrasesRepository {
     `).get(id) as Omit<IdiomPhraseEntry, 'examples'> | undefined;
     if (!row) return null;
     const examples = this.db.prepare(`
-      SELECT id, example, position FROM idioms_phrases_examples WHERE entry_id = ? ORDER BY position
+      SELECT id, example, voice, position FROM idioms_phrases_examples WHERE entry_id = ? ORDER BY position
     `).all(id) as IdiomPhraseExample[];
     return { ...row, type: row.type as ExpressionType, examples };
+  }
+
+  public replaceExamples(id: string, examples: Array<{ example: string; voice: ExampleVoice }>): IdiomPhraseEntry | null {
+    const replaceTransaction = this.db.transaction(() => {
+      const exists = this.db.prepare('SELECT 1 FROM idioms_phrases_entries WHERE id = ?').get(id);
+      if (!exists) return false;
+
+      this.db.prepare('DELETE FROM idioms_phrases_examples WHERE entry_id = ?').run(id);
+      const insertExample = this.db.prepare(`
+        INSERT INTO idioms_phrases_examples (id, entry_id, example, position, voice) VALUES (?, ?, ?, ?, ?)
+      `);
+      examples.forEach((item, index) => insertExample.run(`${id}_example_${Date.now()}_${index + 1}`, id, item.example, index + 1, item.voice));
+      this.db.prepare('UPDATE idioms_phrases_entries SET updated_at = ? WHERE id = ?').run(new Date().toISOString(), id);
+      return true;
+    });
+
+    if (!replaceTransaction()) return null;
+    return this.getById(id);
   }
 
   public getRandomQuizPrompt(type?: ExpressionType, excludeId?: string): IdiomPhraseQuizPrompt | null {
@@ -92,7 +110,7 @@ export class IdiomsPhrasesRepository {
     type: ExpressionType;
     language: string;
     meaning: string;
-    examples: string[];
+    examples: Array<string | { example: string; voice?: ExampleVoice }>;
   }): IdiomPhraseEntry {
     const id = `expression_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const now = new Date().toISOString();
@@ -102,9 +120,13 @@ export class IdiomsPhrasesRepository {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).run(id, input.expression, input.normalizedExpression, input.type, input.language, input.meaning, now, now);
       const insertExample = this.db.prepare(`
-        INSERT INTO idioms_phrases_examples (id, entry_id, example, position) VALUES (?, ?, ?, ?)
+        INSERT INTO idioms_phrases_examples (id, entry_id, example, position, voice) VALUES (?, ?, ?, ?, ?)
       `);
-      input.examples.forEach((example, index) => insertExample.run(`${id}_example_${index + 1}`, id, example, index + 1));
+      input.examples.forEach((item, index) => {
+        const example = typeof item === 'string' ? item : item.example;
+        const voice = typeof item === 'string' ? 'other' : item.voice || 'other';
+        insertExample.run(`${id}_example_${index + 1}`, id, example, index + 1, voice);
+      });
     });
     saveTransaction();
     return {
@@ -114,7 +136,12 @@ export class IdiomsPhrasesRepository {
       type: input.type,
       language: input.language,
       meaning: input.meaning,
-      examples: input.examples.map((example, index) => ({ id: `${id}_example_${index + 1}`, example, position: index + 1 })),
+      examples: input.examples.map((item, index) => ({
+        id: `${id}_example_${index + 1}`,
+        example: typeof item === 'string' ? item : item.example,
+        voice: typeof item === 'string' ? 'other' : item.voice || 'other',
+        position: index + 1
+      })),
       createdAt: now,
       updatedAt: now
     };

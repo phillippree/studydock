@@ -32,3 +32,16 @@ export const idiomsPhrasesMigration: Migration = {
     `);
   }
 };
+
+export const idiomsPhrasesExampleVoiceMigration: Migration = {
+  id: 'idioms_phrases_002_example_voice',
+  name: 'Add voice labels to expression examples',
+  modeId: 'idioms-phrases',
+  up: (db: Database) => {
+    db.exec(`
+      ALTER TABLE idioms_phrases_examples
+      ADD COLUMN voice TEXT NOT NULL DEFAULT 'other'
+      CHECK (voice IN ('active', 'passive', 'other'));
+    `);
+  }
+};

@@ -1,8 +1,10 @@
 export type ExpressionType = 'idiom' | 'phrase';
+export type ExampleVoice = 'active' | 'passive' | 'other';
 
 export interface IdiomPhraseExample {
   id: string;
   example: string;
+  voice: ExampleVoice;
   position: number;
 }
 

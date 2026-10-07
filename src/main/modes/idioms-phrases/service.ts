@@ -1,7 +1,7 @@
 import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt, LookupExpressionResult } from '../../../shared/contracts/idiomsPhrases';
 import { GeminiClient } from '../../gemini/client';
 import { SettingsService } from '../../settings/service';
-import { buildExpressionLookupPrompt, buildExpressionSystemInstruction } from './prompt';
+import { buildExpressionExamplesRefreshPrompt, buildExpressionLookupPrompt, buildExpressionSystemInstruction } from './prompt';
 import { normalizeExpression, validateExpressionLookup } from './schema';
 import { IdiomsPhrasesRepository } from './repository';
 
@@ -27,6 +27,26 @@ export class IdiomsPhrasesService {
     const entry = this.repository.getById(id);
     if (!entry) throw new Error('This expression is no longer in your library.');
     return entry;
+  }
+
+  public async refreshExamples(id: string): Promise<IdiomPhraseEntry> {
+    const existing = this.repository.getById(id);
+    if (!existing) throw new Error('This expression is no longer in your library.');
+    if (!this.gemini.getApiKey()) throw new Error('Add a Gemini API key in Home settings before refreshing examples.');
+
+    const response = await this.gemini.generateStructured({
+      prompt: buildExpressionExamplesRefreshPrompt(existing.expression, existing.meaning, existing.language, existing.type),
+      systemInstruction: buildExpressionSystemInstruction(),
+      modelOverride: this.settings.getModel(),
+      schemaValidator: raw => validateExpressionLookup(raw, existing.expression, existing.language, existing.type)
+    });
+    if (!response.recognized || !response.meaning) {
+      throw new Error('Gemini could not verify this expression while refreshing its examples. Your saved examples were kept.');
+    }
+
+    const updated = this.repository.replaceExamples(id, response.examples);
+    if (!updated) throw new Error('This expression was removed before its examples could be saved.');
+    return updated;
   }
 
   public async lookupAndSave(expressionInput: string, type: ExpressionType, languageInput = 'en'): Promise<LookupExpressionResult> {

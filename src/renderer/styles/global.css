@@ -453,6 +453,7 @@ html, body, #root {
 .expression-meaning { margin-top: 14px; line-height: 1.5; }
 .expression-examples { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-default); }
 .expression-examples p { color: var(--text-secondary); margin-top: 8px; font-style: italic; line-height: 1.45; }
+.expression-example-voice { display: inline-block; margin-right: 9px; padding: 2px 7px; border: 1px solid var(--border-default); border-radius: 6px; color: var(--text-muted); font-size: .7rem; font-style: normal; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; vertical-align: 1px; }
 .expressions-empty { min-height: 190px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; text-align: center; padding: 26px; }
 .expressions-empty > svg { color: var(--accent-primary); }
 .expressions-empty > p { color: var(--text-secondary); }
@@ -460,6 +461,39 @@ html, body, #root {
 .expressions-pagination > div { display: flex; align-items: center; gap: 12px; }
 .expressions-pagination .btn { display: inline-flex; align-items: center; gap: 6px; }
 .expressions-heading-actions { display: flex; align-items: center; gap: 12px; }
+.expression-table-card { display: flex; flex-direction: column; gap: 16px; padding: 22px; }
+.expression-table-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.expression-table-heading h2 { display: flex; align-items: center; gap: 9px; font-size: 1.12rem; }
+.expression-table-heading h2 svg { color: var(--accent-primary); }
+.expression-table-heading p { margin-top: 5px; color: var(--text-secondary); font-size: .88rem; }
+.expression-table-scroll { overflow: auto; border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.expression-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; }
+.expression-table th, .expression-table td { padding: 14px 16px; border-bottom: 1px solid var(--border-default); vertical-align: top; }
+.expression-table thead { background: var(--bg-tertiary); }
+.expression-table thead th { color: var(--text-primary); font-size: .83rem; font-weight: 650; white-space: nowrap; }
+.expression-table tbody th { min-width: 180px; color: var(--text-primary); font-weight: 650; }
+.expression-table tbody td { color: var(--text-secondary); line-height: 1.45; }
+.expression-table tbody tr:last-child th, .expression-table tbody tr:last-child td { border-bottom: 0; }
+.expression-table tbody td:nth-child(3) { min-width: 300px; }
+.expression-table tbody td:nth-child(4), .expression-table tbody td:nth-child(5) { white-space: nowrap; }
+.expression-refresh-button { white-space: nowrap; }
+.expression-refresh-button .spinner { width: 14px; height: 14px; border-width: 2px; }
+.expression-open-button { padding: 0; border: 0; color: inherit; background: transparent; font: inherit; font-weight: inherit; text-align: left; cursor: pointer; }
+.expression-open-button:hover { color: var(--accent-primary); text-decoration: underline; text-underline-offset: 3px; }
+.expression-open-button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; border-radius: 2px; }
+.expression-detail-backdrop { z-index: 70; }
+.expression-detail-modal { width: min(780px, 94vw); max-height: 88vh; padding: 28px; }
+.expression-detail-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.expression-detail-header > div { display: flex; align-items: center; gap: 12px; }
+.expression-detail-title { margin-top: 10px; color: var(--text-primary); font: 500 clamp(2rem, 5vw, 3.2rem)/1.15 Georgia, serif; overflow-wrap: anywhere; }
+.expression-detail-meaning, .expression-detail-examples { margin-top: 22px; padding: 18px; background: var(--bg-tertiary); border-radius: var(--radius-md); }
+.expression-detail-meaning h3, .expression-detail-examples h3 { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; color: var(--accent-primary); font-size: .86rem; letter-spacing: .06em; text-transform: uppercase; }
+.expression-detail-examples-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.expression-detail-examples-heading h3 { margin: 0; }
+.expression-detail-examples-heading .expression-refresh-button { text-transform: none; letter-spacing: normal; }
+.expression-detail-meaning p { line-height: 1.6; }
+.expression-detail-examples .expression-examples { margin-top: 0; padding-top: 0; border-top: 0; }
+.expression-detail-empty { color: var(--text-secondary); }
 .expression-quiz-card { min-height: 420px; padding: 32px; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .expression-quiz-card > .expressions-filters { align-self: flex-end; }
 .expression-quiz-type { margin-top: 22px; color: var(--accent-secondary); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -481,12 +515,15 @@ html, body, #root {
 @media (max-width: 680px) {
   .expressions-page { padding: 24px 16px 36px; }
   .expressions-heading, .expressions-library-heading { align-items: flex-start; flex-direction: column; }
+  .expression-table-heading { align-items: flex-start; flex-direction: column; }
   .expressions-form-row { align-items: stretch; flex-direction: column; gap: 4px; }
   .expressions-type-field, .expressions-input-field { width: 100%; }
   .expressions-submit { align-self: flex-start; margin: 4px 0 0; }
   .expressions-library-heading { gap: 12px; }
   .expressions-heading-actions { width: 100%; justify-content: space-between; }
   .expression-quiz-card { padding: 22px 16px; }
+  .expression-detail-modal { padding: 20px; }
+  .expression-detail-examples-heading { align-items: flex-start; flex-direction: column; }
   .expression-quiz-card > .expressions-filters { align-self: center; }
   .expressions-pagination { align-items: flex-start; flex-direction: column; }
   .expressions-pagination > div { width: 100%; justify-content: space-between; }

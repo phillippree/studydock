@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ExpressionType } from '../../../shared/contracts/idiomsPhrases';
+import { ExampleVoice, ExpressionType } from '../../../shared/contracts/idiomsPhrases';
 
 const rawLookupSchema = z.object({
   expression: z.string().trim().min(1).max(120),
@@ -7,7 +7,10 @@ const rawLookupSchema = z.object({
   language: z.string().trim().min(2).max(20).default('en'),
   recognized: z.boolean(),
   meaning: z.string().trim().min(3).max(2000).optional(),
-  examples: z.array(z.string().trim().min(3).max(1000)).max(6).default([]),
+  examples: z.array(z.object({
+    example: z.string().trim().min(3).max(1000),
+    voice: z.enum(['active', 'passive', 'other'])
+  })).max(6).default([]),
   suggestion: z.string().trim().min(1).max(120).nullable().optional()
 });
 
@@ -16,7 +19,7 @@ export interface ValidatedExpressionLookup {
   language: string;
   recognized: boolean;
   meaning?: string;
-  examples: string[];
+  examples: Array<{ example: string; voice: ExampleVoice }>;
   suggestion?: string;
 }
 
@@ -39,10 +42,10 @@ export function validateExpressionLookup(
   if (!result.recognized) {
     return { expression: expectedExpression, language: expectedLanguage, recognized: false, examples: [], suggestion: result.suggestion || undefined };
   }
-  if (!result.meaning || result.examples.length < 1) {
-    throw new Error('A recognized expression must include a meaning and at least one example.');
+  if (!result.meaning || result.examples.length !== 6) {
+    throw new Error('A recognized expression must include a meaning and exactly six examples.');
   }
-  const uniqueExamples = new Set(result.examples.map(example => normalizeExpression(example)));
+  const uniqueExamples = new Set(result.examples.map(example => normalizeExpression(example.example)));
   if (uniqueExamples.size !== result.examples.length) throw new Error('Examples must be distinct.');
   return {
     expression: expectedExpression,
