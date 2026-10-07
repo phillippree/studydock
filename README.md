@@ -178,6 +178,16 @@ bash scripts/build-macos-dmg.sh
 
 The script builds the TypeScript/renderer application, then packages a `.dmg` with Electron Builder. Find the resulting disk image in `release/`; it targets the Mac's current architecture. You can also use `npm run package:mac`. Apple Developer signing and notarization are not configured, so macOS may show a first-open security warning.
 
+##### If macOS says StudyDock is damaged
+
+StudyDock's current macOS build is unsigned. If you downloaded and installed a copy from a StudyDock release that you trust, macOS may quarantine it and show a “damaged and can't be opened” warning. After copying StudyDock into Applications, you can remove the quarantine attribute for that app:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/StudyDock.app"
+```
+
+Only run this command for an app downloaded from a release you trust. Removing quarantine bypasses macOS's downloaded-app check for StudyDock.
+
 The macOS app and disk image use the StudyDock open-book-and-compass icon from `assets/studydock.icns`; its 1024-pixel PNG source is `assets/studydock-icon.png`.
 
 ## Versioning

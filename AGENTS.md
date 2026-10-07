@@ -113,6 +113,7 @@ Do not claim packaging works on platforms that were not tested. Account for the 
 ## Documentation and communication
 
 - Read relevant existing documentation before implementation. Update `README.md` for changes to setup, commands, architecture, storage, packaging, or mode registration.
+- Update `CHANGELOG.md` for every user-facing bug fix or feature. Add a concise, user-focused bullet under `[Unreleased]` while working; keep internal-only refactors and maintenance out unless they change behavior users notice. When preparing a release, move those notes into the matching version section and date it.
 - For substantial topics, use focused Markdown files under `documents/` if needed, with concise names such as `mode-guide.md` or `storage.md`; link them from the README.
 - Before changing code, briefly explain findings or intended behavior, the concrete approach, and relevant verification. Keep progress updates concise.
 - Work within the user's authorized scope. Ask before consequential actions such as deleting user data, publishing releases, or changing security-sensitive access. Do not require repeated confirmation for routine authorized fixes.
