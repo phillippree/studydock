@@ -176,7 +176,7 @@ npm ci
 bash scripts/build-macos-dmg.sh
 ```
 
-The script builds the TypeScript/renderer application, then packages a `.dmg` with Electron Builder. Find the resulting disk image in `release/`; it targets the Mac's current architecture. You can also use `npm run package:mac`. Apple Developer signing and notarization are not configured, so macOS may show a first-open security warning.
+The script checks that GitHub CLI (`gh`) is installed, authenticated, and can access a Release matching the version in `package.json` (for example, tag `v1.4.0`). Create that release first; a draft release is fine. It then builds the TypeScript/renderer application, packages a `.dmg` for the Mac's current architecture, and uploads it to that Release. If an asset with the same filename is already attached, the upload stops instead of replacing it; remove or rename the old asset before retrying. You can also use `npm run package:mac`. Apple Developer signing and notarization are not configured, so macOS may show a first-open security warning.
 
 ##### If macOS says StudyDock is damaged
 
@@ -227,13 +227,13 @@ git push origin main
 git push origin v1.3.0
 ```
 
-Replace `v1.3.0` with the tag created for your version. If the script reports that the tag push failed after `main` was pushed, retry the second command. The script does not build the app, upload a `.dmg`, or publish a GitHub Release. To distribute an update, package the app and attach the `.dmg` to a GitHub Release using that tag.
+Replace `v1.3.0` with the tag created for your version. If the script reports that the tag push failed after `main` was pushed, retry the second command. This script does not publish a GitHub Release. After creating a release for the tag, run the macOS DMG script above to build and upload its disk image.
 
 ### Application updates
 
 At launch, StudyDock checks the latest published GitHub Release for `phillippree/studydock`. If its version is newer than the installed app, an **Update to x.y.z** button appears beside the app version in the footer. The button opens the GitHub Release page so you can download and install the macOS disk image. StudyDock does not pull source code or rebuild and reinstall itself.
 
-To publish an update, create a GitHub Release with a semantic version tag such as `v1.2.0` and attach the packaged `.dmg`. The repository currently has no published latest release, so the app will not show an update button until one is published. Automatic download and installation could be added later with Electron's updater and GitHub Releases. macOS requires a code signature for auto-updating to work; notarization is recommended for distributing the app without the normal first-open security warning.
+To publish an update, create a GitHub Release with a semantic version tag that matches `package.json`, then run `bash scripts/build-macos-dmg.sh` on a Mac. The script attaches the architecture-specific `.dmg` to that release. The update button appears once a newer version is published as a non-draft release. Automatic download and installation could be added later with Electron's updater and GitHub Releases. macOS requires a code signature for auto-updating to work; notarization is recommended for distributing the app without the normal first-open security warning.
 
 ---
 
@@ -325,6 +325,10 @@ Choose **Idiom** or **Phrase**, enter an expression, and choose **Look up**. Gem
 ### Connectors
 
 Enter a conjunction, transition word, or linking phrase such as **however**, **therefore**, or **in addition**, then choose **Look up**. Gemini identifies its connective role (addition, contrast, cause and effect, sequence, example, conclusion, condition, comparison, or conjunction) and previews its meaning with six distinct examples labeled by grammatical voice. Choose **Save to Library** to store the connector and examples locally. The searchable, category-filtered library is paginated, available offline, and provides a detail card where examples can be refreshed. Lookups and refreshes require a configured Gemini key and internet access, and may incur API usage. Connector data uses its own `connectors_entries` and `connectors_examples` tables, migration, prompt, validation, service, repository, renderer entry point, and IPC operations.
+
+### Punchlines & Jokes
+
+Choose **Joke** or **Punchline**, enter the text or idea, and select **Look up**. Gemini treats it as a premise rather than requiring exact wording, then offers a few faithful rewrites of the joke itself. Review one variation to see its explanation and six separate contextual example sentences labeled by voice (active or passive); save the version you prefer to your local library. The searchable library supports type filters, pagination, offline browsing, and full detail cards. Lookups require a configured Gemini key and internet access, and may use API quota. Entries and their examples are stored in the mode-owned `jokes_entries` and `jokes_examples` tables, with their own prompt, validation, service, repository, migrations, renderer entry point, and IPC operations.
 
 ---
 

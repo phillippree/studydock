@@ -463,6 +463,24 @@ html, body, #root {
 .expressions-feedback.error { color: var(--error-text); background: var(--error-bg); }
 .expression-correction { display: inline-block; margin: 0 10px; color: var(--text-primary); }
 .connector-suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.jokes-page { width: min(1280px, 100%); margin: 0 auto; padding: 28px 32px 48px; }
+.jokes-page .connectors-heading { margin-bottom: 24px; }
+.jokes-lookup-form { display: grid; grid-template-columns: minmax(130px, 190px) minmax(0, 1fr) auto; align-items: end; gap: 14px; margin-top: 18px; }
+.jokes-input { resize: vertical; min-height: 82px; }
+.joke-preview { margin-top: 18px; }
+.joke-preview .connector-entry-heading h3 { white-space: pre-wrap; }
+.joke-preview .expression-detail-meaning { margin-top: 18px; }
+.joke-source-text { color: var(--text-secondary); margin-bottom: 12px; font-size: .9rem; }
+.joke-variation-choices { margin-top: 18px; padding: 18px; }
+.joke-variation-choices > p { color: var(--text-secondary); margin-top: 6px; }
+.joke-variation-choices > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; margin: 14px 0; }
+.joke-variation-option { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-secondary); }
+.joke-variation-option > p { flex: 1; font-size: 1.03rem; font-weight: 600; white-space: pre-wrap; }
+.joke-library-card .connector-entry-heading h3 { margin-top: 8px; }
+.joke-library-card .expression-open-button { text-align: left; white-space: pre-wrap; }
+.joke-library-card .expression-meaning { white-space: pre-wrap; }
+.joke-open-link { margin-top: 10px; border: 0; background: transparent; padding: 0; color: var(--accent-primary); cursor: pointer; font: inherit; }
+@media (max-width: 760px) { .jokes-page { padding: 20px 16px 36px; } .jokes-lookup-form { grid-template-columns: 1fr; } }
 .expressions-library { display: flex; flex-direction: column; gap: 16px; }
 .expressions-library-heading { align-items: flex-end; }
 .expressions-library-heading p { font-size: .87rem; }

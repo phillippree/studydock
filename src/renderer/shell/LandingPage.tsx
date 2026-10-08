@@ -16,7 +16,8 @@ import {
   Eye,
   EyeOff,
   Trash2,
-  Cpu
+  Cpu,
+  Laugh
 } from 'lucide-react';
 import { AvailableModel, DEFAULT_GEMINI_MODEL, GeminiSettings, SUPPORTED_GEMINI_MODELS, TestConnectionResult } from '../../shared/contracts/settings';
 
@@ -206,7 +207,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
                     justifyContent: 'center',
                     color: 'var(--accent-primary)'
                   }}>
-                    {mode.iconName === 'Brain' ? <Brain size={22} /> : mode.iconName === 'Quote' ? <Quote size={22} /> : mode.iconName === 'Workflow' ? <Workflow size={22} /> : <BookOpen size={22} />}
+                    {mode.iconName === 'Brain' ? <Brain size={22} /> : mode.iconName === 'Quote' ? <Quote size={22} /> : mode.iconName === 'Workflow' ? <Workflow size={22} /> : mode.iconName === 'Laugh' ? <Laugh size={22} /> : <BookOpen size={22} />}
                   </div>
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{mode.displayName}</h3>
                   {mode.comingSoon && <span className="badge badge-warning">Coming soon</span>}

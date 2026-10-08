@@ -5,8 +5,12 @@ Notable StudyDock changes are recorded here. Entries are grouped by the app's re
 ## [Unreleased]
 
 ### Added
+- The macOS DMG build script uploads the generated disk image to the matching GitHub Release.
 - Added a sentence refresh button to the revealed answer in Idioms & Phrases practice.
 - Added a Connectors mode with its own searchable local library, Gemini previews, category labels, six voice-labeled examples, and explicit save flow.
+- Added a Punchlines & Jokes mode with Gemini lookup previews and a separate searchable, paginated local library for jokes and punchlines.
+- Punchline and joke lookups now include six voice-labeled example sentences, saved with each entry in a dedicated examples table.
+- Joke lookup now suggests alternate punchlines that preserve the original humorous idea, separately from contextual example sentences.
 - Idiom and phrase lookups now show a preview before saving to the library.
 
 ### Changed

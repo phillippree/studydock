@@ -15,7 +15,46 @@ if [[ ! -x "node_modules/.bin/electron-builder" ]]; then
   exit 1
 fi
 
+if ! command -v gh >/dev/null 2>&1; then
+  echo "GitHub CLI ('gh') is required to upload the disk image. Install it from https://cli.github.com/ and run 'gh auth login'." >&2
+  exit 1
+fi
+
+VERSION="$(node -p "require('./package.json').version")"
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+  echo "Invalid app version in package.json: $VERSION" >&2
+  exit 1
+fi
+
+TAG="v$VERSION"
+REPOSITORY="phillippree/studydock"
+case "$(uname -m)" in
+  arm64) ARCH="arm64" ;;
+  x86_64) ARCH="x64" ;;
+  *) echo "Unsupported macOS architecture: $(uname -m)" >&2; exit 1 ;;
+esac
+DMG_PATH="$PROJECT_ROOT/release/StudyDock-$VERSION-$ARCH.dmg"
+
+if ! gh auth status --hostname github.com >/dev/null 2>&1; then
+  echo "GitHub CLI is not authenticated. Run 'gh auth login' and try again." >&2
+  exit 1
+fi
+
+if ! gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+  echo "GitHub Release '$TAG' was not found in $REPOSITORY." >&2
+  echo "Create a release (a draft is fine) with this tag, then run this script again." >&2
+  exit 1
+fi
+
 npm run build
 npx electron-builder --mac dmg
 
-echo "StudyDock disk image created in: $PROJECT_ROOT/release/"
+if [[ ! -f "$DMG_PATH" ]]; then
+  echo "Expected disk image was not created: $DMG_PATH" >&2
+  echo "Check the Electron Builder output and the files in $PROJECT_ROOT/release/." >&2
+  exit 1
+fi
+
+gh release upload "$TAG" "$DMG_PATH" --repo "$REPOSITORY"
+
+echo "StudyDock disk image created and uploaded to GitHub Release $TAG: $DMG_PATH"

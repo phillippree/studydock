@@ -17,6 +17,7 @@ import { WordQuizAnswer } from './wordQuiz';
 import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt, LookupExpressionResult, SaveExpressionResult } from './idiomsPhrases';
 import { UpdateCheckResult } from './updates';
 import { ConnectorEntry, ConnectorListPage, ConnectorListQuery, ConnectorLookupResult, ConnectorSaveResult } from './connectors';
+import { JokeEntry, JokeListPage, JokeListQuery, JokeLookupResult, JokeSaveResult, JokeType } from './jokes';
 
 export interface StudyDockAPI {
   // Application updates
@@ -70,6 +71,12 @@ export interface StudyDockAPI {
   connectorsLookup(input: { connector: string; language?: string }): Promise<ConnectorLookupResult>;
   connectorsSavePreview(token: string): Promise<ConnectorSaveResult>;
   connectorsRefreshExamples(id: string): Promise<ConnectorEntry>;
+
+  // Punchlines & Jokes mode
+  jokesList(query?: JokeListQuery): Promise<JokeListPage>;
+  jokesLookup(input: { text: string; type: JokeType; language?: string }): Promise<JokeLookupResult>;
+  jokesSavePreview(token: string): Promise<JokeSaveResult>;
+  jokesGetById(id: string): Promise<JokeEntry | null>;
 }
 
 declare global {

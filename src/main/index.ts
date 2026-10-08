@@ -10,6 +10,7 @@ import { registerVocabMode, vocabModeDescriptor } from './modes/vocab';
 import { registerWordQuizMode, wordQuizModeDescriptor } from './modes/word-quiz';
 import { idiomsPhrasesModeDescriptor, registerIdiomsPhrasesMode } from './modes/idioms-phrases';
 import { connectorsModeDescriptor, registerConnectorsMode } from './modes/connectors';
+import { jokesModeDescriptor, registerJokesMode } from './modes/jokes';
 import { ModeDescriptor } from '../shared/contracts/modes';
 import { checkForUpdates } from './updates/checkForUpdates';
 import { appLogger } from './logging/logger';
@@ -28,7 +29,8 @@ const REGISTERED_MODES: ModeDescriptor[] = [
   vocabModeDescriptor,
   wordQuizModeDescriptor,
   idiomsPhrasesModeDescriptor,
-  connectorsModeDescriptor
+  connectorsModeDescriptor,
+  jokesModeDescriptor
 ];
 
 async function createWindow(): Promise<BrowserWindow> {
@@ -159,11 +161,13 @@ async function initializeApp(): Promise<void> {
   registerWordQuizMode(db);
   const idiomsPhrasesMode = registerIdiomsPhrasesMode(db, geminiClient, settingsService);
   const connectorsMode = registerConnectorsMode(db, geminiClient, settingsService);
+  const jokesMode = registerJokesMode(db, geminiClient, settingsService);
 
   migrationRunner.runMigrations([
     ...vocabMode.migrations,
     ...idiomsPhrasesMode.migrations,
-    ...connectorsMode.migrations
+    ...connectorsMode.migrations,
+    ...jokesMode.migrations
   ]);
 
   // Register settings & mode registry IPC handlers

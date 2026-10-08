@@ -22,3 +22,11 @@ export const CONNECTORS_MODE: ModeDescriptor = {
   iconName: 'Workflow',
   order: 4
 };
+
+export const JOKES_MODE: ModeDescriptor = {
+  id: 'jokes',
+  displayName: 'Punchlines & Jokes',
+  description: 'Look up jokes and punchlines, then save them to a private local collection.',
+  iconName: 'Laugh',
+  order: 5
+};

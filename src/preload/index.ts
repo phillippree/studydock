@@ -51,7 +51,12 @@ const api: StudyDockAPI = {
   connectorsList: (query) => ipcRenderer.invoke('connectors:list', query),
   connectorsLookup: (input) => ipcRenderer.invoke('connectors:lookup', input),
   connectorsSavePreview: (token) => ipcRenderer.invoke('connectors:savePreview', token),
-  connectorsRefreshExamples: (id) => ipcRenderer.invoke('connectors:refreshExamples', id)
+  connectorsRefreshExamples: (id) => ipcRenderer.invoke('connectors:refreshExamples', id),
+  // Punchlines & Jokes Mode
+  jokesList: (query) => ipcRenderer.invoke('jokes:list', query),
+  jokesLookup: (input) => ipcRenderer.invoke('jokes:lookup', input),
+  jokesSavePreview: (token) => ipcRenderer.invoke('jokes:savePreview', token),
+  jokesGetById: (id) => ipcRenderer.invoke('jokes:getById', id)
 };
 
 contextBridge.exposeInMainWorld('studydockBridge', api);
