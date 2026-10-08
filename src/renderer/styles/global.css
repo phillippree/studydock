@@ -433,6 +433,9 @@ html, body, #root {
 .expressions-type-field { width: 150px; flex: 0 0 auto; }
 .expressions-input-field { flex: 1 1 auto; min-width: 160px; }
 .expressions-submit { flex: 0 0 auto; margin-bottom: 16px; }
+.expression-lookup-preview { padding: 18px; }
+.expression-preview-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
+.expression-preview-actions .spinner { width: 15px; height: 15px; border-width: 2px; }
 .expressions-feedback { display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; margin-top: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-md); font-size: .88rem; }
 .expressions-feedback svg { flex: 0 0 auto; margin-top: 2px; }
 .expressions-feedback.success { color: var(--success-text); background: var(--success-bg); }

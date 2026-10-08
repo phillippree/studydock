@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, ArrowRight, BookOpen, Brain, CheckCircle, Eye, Plus, Quote, RefreshCw, Search, X } from 'lucide-react';
-import { ExpressionType, IdiomPhraseEntry } from '../../../shared/contracts/idiomsPhrases';
+import { ExpressionLookupPreview, ExpressionType, IdiomPhraseEntry } from '../../../shared/contracts/idiomsPhrases';
 
 interface IdiomsPhrasesPageProps {
   onNavigateHome: () => void;
@@ -18,6 +18,8 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
   const [reloadVersion, setReloadVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isLookingUp, setIsLookingUp] = useState(false);
+  const [isSavingPreview, setIsSavingPreview] = useState(false);
+  const [lookupPreview, setLookupPreview] = useState<ExpressionLookupPreview | null>(null);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const requestSequence = useRef(0);
   const hasLibraryQuery = search.trim().length > 0 || filter !== 'all';
@@ -148,23 +150,39 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
     event.preventDefault();
     if (!expression.trim() || isLookingUp) return;
     setIsLookingUp(true);
+    setLookupPreview(null);
     setFeedback(null);
     try {
-      const result = await window.studydockBridge.idiomsPhrasesLookupAndSave({ expression, type });
+      const result = await window.studydockBridge.idiomsPhrasesLookup({ expression, type });
       if (result.status === 'unrecognized') {
         setFeedback({ kind: 'error', message: `Gemini couldn't confirm “${result.expression}” as a ${type}.${result.suggestion ? ` Did you mean “${result.suggestion}”?` : ''} It wasn't saved.` });
       } else if (result.status === 'duplicate') {
         setFeedback({ kind: 'success', message: `“${result.entry.expression}” is already in your saved ${type === 'idiom' ? 'idioms' : 'phrases'}.` });
       } else {
-        setPage(0);
-        setReloadVersion(version => version + 1);
-        setExpression('');
-        setFeedback({ kind: 'success', message: `“${result.entry.expression}” was verified and saved to your library.` });
+        setLookupPreview(result);
       }
     } catch (err: unknown) {
       setFeedback({ kind: 'error', message: err instanceof Error ? err.message : 'The lookup failed. Please try again.' });
     } finally {
       setIsLookingUp(false);
+    }
+  };
+
+  const saveLookupPreview = async () => {
+    if (!lookupPreview || isSavingPreview) return;
+    setIsSavingPreview(true);
+    setFeedback(null);
+    try {
+      const result = await window.studydockBridge.idiomsPhrasesSavePreview(lookupPreview.token);
+      setLookupPreview(null);
+      setPage(0);
+      setReloadVersion(version => version + 1);
+      setExpression('');
+      setFeedback({ kind: 'success', message: result.status === 'duplicate' ? `“${result.entry.expression}” was already saved in your library.` : `“${result.entry.expression}” was saved to your library.` });
+    } catch (err: unknown) {
+      setFeedback({ kind: 'error', message: err instanceof Error ? err.message : 'Could not save this expression.' });
+    } finally {
+      setIsSavingPreview(false);
     }
   };
 
@@ -219,26 +237,32 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
 
       <section className="card expressions-lookup">
         <h2><Plus size={18} />Look up an expression</h2>
-        <p className="expressions-help">Gemini checks the expression and saves it to your local library when it is recognized. Lookups require internet access and may use your Gemini quota.</p>
+        <p className="expressions-help">Look up an expression to preview its meaning and examples. Save it to your local library only when you choose. Lookups require internet access and may use your Gemini quota.</p>
         <form onSubmit={handleLookup}>
           <div className="expressions-form-row">
             <div className="input-group expressions-type-field">
               <label className="input-label" htmlFor="expression-type">Type</label>
-              <select id="expression-type" className="input-text" value={type} disabled={isLookingUp} onChange={event => setType(event.target.value as ExpressionType)}>
+              <select id="expression-type" className="input-text" value={type} disabled={isLookingUp || isSavingPreview} onChange={event => { setType(event.target.value as ExpressionType); setLookupPreview(null); }}>
                 <option value="idiom">Idiom</option>
                 <option value="phrase">Phrase</option>
               </select>
             </div>
             <div className="input-group expressions-input-field">
               <label className="input-label" htmlFor="expression-input">Idiom or phrase</label>
-              <input id="expression-input" className="input-text" value={expression} maxLength={120} disabled={isLookingUp} placeholder="e.g. break the ice" onChange={event => { setExpression(event.target.value); setFeedback(null); }} />
+              <input id="expression-input" className="input-text" value={expression} maxLength={120} disabled={isLookingUp || isSavingPreview} placeholder="e.g. break the ice" onChange={event => { setExpression(event.target.value); setLookupPreview(null); setFeedback(null); }} />
             </div>
-            <button className="btn btn-primary expressions-submit" type="submit" disabled={!expression.trim() || isLookingUp}>
+            <button className="btn btn-primary expressions-submit" type="submit" disabled={!expression.trim() || isLookingUp || isSavingPreview}>
               {isLookingUp ? <div className="spinner" /> : <Search size={17} />}
-              {isLookingUp ? 'Looking up…' : 'Look up & Save'}
+              {isLookingUp ? 'Looking up…' : 'Look up'}
             </button>
           </div>
         </form>
+        {lookupPreview && <article className="card expression-lookup-preview" aria-live="polite">
+          <div className="expression-card-heading"><div><span className="expression-type-label">Preview · {lookupPreview.type}</span><h3>{lookupPreview.expression}</h3></div><span className="expression-language">{lookupPreview.language.toUpperCase()}</span></div>
+          <p className="expression-meaning">{lookupPreview.meaning}</p>
+          <div className="expression-examples">{lookupPreview.examples.map((example, index) => <p key={`${index}-${example.example}`}><span className={`expression-example-voice ${example.voice}`}>{example.voice}</span>“{example.example}”</p>)}</div>
+          <div className="expression-preview-actions"><button className="btn btn-primary" onClick={() => void saveLookupPreview()} disabled={isSavingPreview}>{isSavingPreview ? <span className="spinner" /> : <Plus size={16} />}{isSavingPreview ? 'Saving…' : 'Save to Library'}</button><button className="btn btn-secondary" onClick={() => setLookupPreview(null)} disabled={isSavingPreview}>Discard preview</button></div>
+        </article>}
         {feedback && <div className={`expressions-feedback ${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>
           {feedback.kind === 'error' ? <AlertCircle size={17} /> : <CheckCircle size={17} />}{feedback.message}
         </div>}

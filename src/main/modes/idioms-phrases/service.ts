@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt, LookupExpressionResult } from '../../../shared/contracts/idiomsPhrases';
 import { GeminiClient } from '../../gemini/client';
 import { SettingsService } from '../../settings/service';
@@ -6,6 +7,16 @@ import { normalizeExpression, validateExpressionLookup } from './schema';
 import { IdiomsPhrasesRepository } from './repository';
 
 export class IdiomsPhrasesService {
+  private readonly pendingPreviews = new Map<string, {
+    expression: string;
+    normalizedExpression: string;
+    type: ExpressionType;
+    language: string;
+    meaning: string;
+    examples: Array<{ example: string; voice: 'active' | 'passive' | 'other' }>;
+    expiresAt: number;
+  }>();
+
   constructor(
     private readonly repository: IdiomsPhrasesRepository,
     private readonly gemini: GeminiClient,
@@ -49,7 +60,7 @@ export class IdiomsPhrasesService {
     return updated;
   }
 
-  public async lookupAndSave(expressionInput: string, type: ExpressionType, languageInput = 'en'): Promise<LookupExpressionResult> {
+  public async lookup(expressionInput: string, type: ExpressionType, languageInput = 'en'): Promise<LookupExpressionResult> {
     const expression = expressionInput.trim().replace(/\s+/g, ' ');
     const language = languageInput.trim() || 'en';
     if (!expression) throw new Error('Enter an idiom or phrase to look up.');
@@ -73,22 +84,70 @@ export class IdiomsPhrasesService {
 
     const racedDuplicate = this.repository.find(normalizedExpression, type, language);
     if (racedDuplicate) return { status: 'duplicate', entry: racedDuplicate };
+
+    this.removeExpiredPreviews();
+    while (this.pendingPreviews.size >= 50) {
+      const oldestToken = this.pendingPreviews.keys().next().value;
+      if (!oldestToken) break;
+      this.pendingPreviews.delete(oldestToken);
+    }
+    const token = randomUUID();
+    this.pendingPreviews.set(token, {
+      expression,
+      normalizedExpression,
+      type,
+      language,
+      meaning: response.meaning,
+      examples: response.examples,
+      expiresAt: Date.now() + 15 * 60 * 1000
+    });
+    return {
+      status: 'preview',
+      token,
+      expression,
+      type,
+      language,
+      meaning: response.meaning,
+      examples: response.examples
+    };
+  }
+
+  public savePreview(token: string): { status: 'saved' | 'duplicate'; entry: IdiomPhraseEntry } {
+    this.removeExpiredPreviews();
+    const preview = this.pendingPreviews.get(token);
+    if (!preview) throw new Error('This lookup preview expired. Please look it up again.');
+
+    const existing = this.repository.find(preview.normalizedExpression, preview.type, preview.language);
+    if (existing) {
+      this.pendingPreviews.delete(token);
+      return { status: 'duplicate', entry: existing };
+    }
+
     try {
-      return {
-        status: 'saved',
-        entry: this.repository.save({
-          expression,
-          normalizedExpression,
-          type,
-          language,
-          meaning: response.meaning,
-          examples: response.examples
-        })
-      };
+      const entry = this.repository.save({
+        expression: preview.expression,
+        normalizedExpression: preview.normalizedExpression,
+        type: preview.type,
+        language: preview.language,
+        meaning: preview.meaning,
+        examples: preview.examples
+      });
+      this.pendingPreviews.delete(token);
+      return { status: 'saved', entry };
     } catch (error: unknown) {
-      const duplicate = this.repository.find(normalizedExpression, type, language);
-      if (duplicate) return { status: 'duplicate', entry: duplicate };
+      const duplicate = this.repository.find(preview.normalizedExpression, preview.type, preview.language);
+      if (duplicate) {
+        this.pendingPreviews.delete(token);
+        return { status: 'duplicate', entry: duplicate };
+      }
       throw error;
+    }
+  }
+
+  private removeExpiredPreviews(): void {
+    const now = Date.now();
+    for (const [token, preview] of this.pendingPreviews) {
+      if (preview.expiresAt <= now) this.pendingPreviews.delete(token);
     }
   }
 }

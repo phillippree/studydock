@@ -39,7 +39,7 @@ describe('Idioms & Phrases mode', () => {
     vi.restoreAllMocks();
   });
 
-  it('verifies, saves, and reloads an idiom with examples', async () => {
+  it('previews a verified idiom without saving until requested', async () => {
     vi.spyOn(gemini, 'generateStructured').mockResolvedValueOnce({
       expression: 'break the ice',
       type: 'idiom',
@@ -49,9 +49,15 @@ describe('Idioms & Phrases mode', () => {
       examples: sixExamples
     });
 
-    const result = await service.lookupAndSave(' break   the ice ', 'idiom');
+    const preview = await service.lookup(' break   the ice ', 'idiom');
+    expect(preview.status).toBe('preview');
+    if (preview.status !== 'preview') throw new Error('Expected a lookup preview');
+    expect(preview.examples).toHaveLength(6);
+    expect(preview.examples[1].voice).toBe('passive');
+    expect(repository.find('break the ice', 'idiom', 'en')).toBeNull();
+
+    const result = service.savePreview(preview.token);
     expect(result.status).toBe('saved');
-    if (result.status !== 'saved') throw new Error('Expected saved result');
     expect(result.entry.examples).toHaveLength(6);
     expect(result.entry.examples[1].voice).toBe('passive');
     expect(repository.find('break the ice', 'idiom', 'en')?.meaning).toContain('relaxed');
@@ -76,7 +82,7 @@ describe('Idioms & Phrases mode', () => {
     vi.spyOn(gemini, 'generateStructured').mockResolvedValueOnce({
       expression: 'blorp the moon', type: 'idiom', language: 'en', recognized: false, examples: [], suggestion: 'reach for the moon'
     });
-    await expect(service.lookupAndSave('blorp the moon', 'idiom')).resolves.toMatchObject({ status: 'unrecognized', suggestion: 'reach for the moon' });
+    await expect(service.lookup('blorp the moon', 'idiom')).resolves.toMatchObject({ status: 'unrecognized', suggestion: 'reach for the moon' });
     expect(repository.list({ offset: 0, limit: 6 }).entries).toEqual([]);
   });
 
@@ -87,8 +93,24 @@ describe('Idioms & Phrases mode', () => {
     });
     expect(repository.getById(existing.id)?.examples[0].voice).toBe('other');
     const generate = vi.spyOn(gemini, 'generateStructured');
-    await expect(service.lookupAndSave(' ON THE SAME PAGE ', 'phrase')).resolves.toMatchObject({ status: 'duplicate', entry: { id: existing.id } });
+    await expect(service.lookup(' ON THE SAME PAGE ', 'phrase')).resolves.toMatchObject({ status: 'duplicate', entry: { id: existing.id } });
     expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('returns an existing expression if it is saved after preview but before confirmation', async () => {
+    vi.spyOn(gemini, 'generateStructured').mockResolvedValueOnce({
+      expression: 'break the ice', type: 'idiom', language: 'en', recognized: true,
+      meaning: 'Start a friendly conversation.', examples: sixExamples
+    });
+    const preview = await service.lookup('break the ice', 'idiom');
+    if (preview.status !== 'preview') throw new Error('Expected a lookup preview');
+    const existing = repository.save({
+      expression: 'break the ice', normalizedExpression: 'break the ice', type: 'idiom', language: 'en',
+      meaning: 'Already saved elsewhere.', examples: ['They broke the ice.']
+    });
+
+    expect(service.savePreview(preview.token)).toMatchObject({ status: 'duplicate', entry: { id: existing.id } });
+    expect(repository.list({ offset: 0, limit: 6 }).total).toBe(1);
   });
 
   it('refreshes an expression into six voice-labeled examples without changing its meaning', async () => {
@@ -129,7 +151,7 @@ describe('Idioms & Phrases mode', () => {
     vi.spyOn(gemini, 'generateStructured').mockResolvedValueOnce({
       expression: 'spill the beans', type: 'idiom', language: 'en', recognized: false, examples: []
     });
-    await expect(service.lookupAndSave('spill the beans', 'idiom')).resolves.toMatchObject({ status: 'unrecognized' });
+    await expect(service.lookup('spill the beans', 'idiom')).resolves.toMatchObject({ status: 'unrecognized' });
     expect(repository.list({ offset: 0, limit: 6 }).entries).toEqual([]);
   });
 

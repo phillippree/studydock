@@ -26,7 +26,7 @@ export function registerIdiomsPhrasesMode(db: Database.Database, gemini: GeminiC
     }
     return service.list(query as { type?: ExpressionType; search?: string; offset?: number; limit?: number });
   });
-  ipcMain.handle('idiomsPhrases:lookupAndSave', (event, input: unknown) => {
+  ipcMain.handle('idiomsPhrases:lookup', (event, input: unknown) => {
     if (event.senderFrame !== event.sender.mainFrame || !input || typeof input !== 'object' || Array.isArray(input)) {
       throw new Error('Invalid Idioms & Phrases lookup request');
     }
@@ -34,7 +34,13 @@ export function registerIdiomsPhrasesMode(db: Database.Database, gemini: GeminiC
     if (typeof request.expression !== 'string' || (request.type !== 'idiom' && request.type !== 'phrase') || typeof request.language !== 'undefined' && typeof request.language !== 'string') {
       throw new Error('Invalid Idioms & Phrases lookup request');
     }
-    return service.lookupAndSave(request.expression, request.type, request.language);
+    return service.lookup(request.expression, request.type, request.language);
+  });
+  ipcMain.handle('idiomsPhrases:savePreview', (event, token: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame || typeof token !== 'string' || !token || token.length > 100) {
+      throw new Error('Invalid Idioms & Phrases preview save request');
+    }
+    return service.savePreview(token);
   });
   ipcMain.handle('idiomsPhrases:refreshExamples', (event, id: unknown) => {
     if (event.senderFrame !== event.sender.mainFrame || typeof id !== 'string' || !id || id.length > 200) {

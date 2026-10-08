@@ -41,7 +41,8 @@ const api: StudyDockAPI = {
   wordQuizRevealDefinition: (wordId) => ipcRenderer.invoke('wordQuiz:revealDefinition', wordId),
   // Idioms & Phrases Mode
   idiomsPhrasesList: (query) => ipcRenderer.invoke('idiomsPhrases:list', query),
-  idiomsPhrasesLookupAndSave: (input) => ipcRenderer.invoke('idiomsPhrases:lookupAndSave', input),
+  idiomsPhrasesLookup: (input) => ipcRenderer.invoke('idiomsPhrases:lookup', input),
+  idiomsPhrasesSavePreview: (token) => ipcRenderer.invoke('idiomsPhrases:savePreview', token),
   idiomsPhrasesRefreshExamples: (id) => ipcRenderer.invoke('idiomsPhrases:refreshExamples', id),
   idiomsPhrasesQuizGetRandom: (type, excludeId) => ipcRenderer.invoke('idiomsPhrases:quizGetRandom', { type, excludeId }),
   idiomsPhrasesQuizReveal: (id) => ipcRenderer.invoke('idiomsPhrases:quizReveal', id)

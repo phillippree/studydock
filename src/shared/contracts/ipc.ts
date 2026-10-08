@@ -14,7 +14,7 @@ import {
   VerifyAndAddWordResult
 } from './vocab';
 import { WordQuizAnswer } from './wordQuiz';
-import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt, LookupExpressionResult } from './idiomsPhrases';
+import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt, LookupExpressionResult, SaveExpressionResult } from './idiomsPhrases';
 import { UpdateCheckResult } from './updates';
 
 export interface StudyDockAPI {
@@ -58,7 +58,8 @@ export interface StudyDockAPI {
 
   // Idioms & Phrases mode
   idiomsPhrasesList(query?: IdiomPhraseListQuery): Promise<IdiomPhraseListPage>;
-  idiomsPhrasesLookupAndSave(input: { expression: string; type: ExpressionType; language?: string }): Promise<LookupExpressionResult>;
+  idiomsPhrasesLookup(input: { expression: string; type: ExpressionType; language?: string }): Promise<LookupExpressionResult>;
+  idiomsPhrasesSavePreview(token: string): Promise<SaveExpressionResult>;
   idiomsPhrasesRefreshExamples(id: string): Promise<IdiomPhraseEntry>;
   idiomsPhrasesQuizGetRandom(type?: ExpressionType, excludeId?: string): Promise<IdiomPhraseQuizPrompt | null>;
   idiomsPhrasesQuizReveal(id: string): Promise<IdiomPhraseEntry>;

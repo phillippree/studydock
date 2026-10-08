@@ -39,7 +39,19 @@ export interface IdiomPhraseQuizPrompt {
   language: string;
 }
 
+export interface ExpressionLookupPreview {
+  status: 'preview';
+  token: string;
+  expression: string;
+  type: ExpressionType;
+  language: string;
+  meaning: string;
+  examples: Array<{ example: string; voice: ExampleVoice }>;
+}
+
 export type LookupExpressionResult =
-  | { status: 'saved'; entry: IdiomPhraseEntry }
+  | ExpressionLookupPreview
   | { status: 'duplicate'; entry: IdiomPhraseEntry }
   | { status: 'unrecognized'; expression: string; suggestion?: string };
+
+export type SaveExpressionResult = { status: 'saved' | 'duplicate'; entry: IdiomPhraseEntry };
