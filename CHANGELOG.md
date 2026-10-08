@@ -5,7 +5,8 @@ Notable StudyDock changes are recorded here. Entries are grouped by the app's re
 ## [Unreleased]
 
 ### Added
-- The macOS DMG build script uploads the generated disk image to the matching GitHub Release.
+- Added cached audio pronunciation playback to Word Quiz cards.
+- The macOS DMG build script creates a draft GitHub Release when needed and attaches the generated disk image.
 - Added a sentence refresh button to the revealed answer in Idioms & Phrases practice.
 - Added a Connectors mode with its own searchable local library, Gemini previews, category labels, six voice-labeled examples, and explicit save flow.
 - Added a Punchlines & Jokes mode with Gemini lookup previews and a separate searchable, paginated local library for jokes and punchlines.

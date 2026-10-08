@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Brain, Eye, EyeOff, ArrowRight, AlertCircle, BookOpen, RotateCw } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Brain, Eye, EyeOff, ArrowRight, AlertCircle, BookOpen, RotateCw, Volume2 } from 'lucide-react';
 import { VocabDefinition, VocabWord } from '../../../shared/contracts/vocab';
 import { WordLibrary } from '../vocab/WordLibrary';
+import { decodeMuLawPcm } from '../vocab/pronunciationAudio';
 
 interface WordQuizPageProps {
   onNavigateHome: () => void;
@@ -16,8 +17,37 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [pronunciationLoading, setPronunciationLoading] = useState(false);
+  const [pronunciationError, setPronunciationError] = useState<string | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const pronunciationRequestRef = useRef(0);
+  const activeWordIdRef = useRef<string | null>(null);
+
+  const stopPronunciation = useCallback(() => {
+    pronunciationRequestRef.current += 1;
+    if (audioSourceRef.current) {
+      audioSourceRef.current.onended = null;
+      try { audioSourceRef.current.stop(); } catch { /* It may have already finished. */ }
+      audioSourceRef.current.disconnect();
+      audioSourceRef.current = null;
+    }
+    setPronunciationError(null);
+    setPronunciationLoading(false);
+  }, []);
+
+  useEffect(() => () => {
+    pronunciationRequestRef.current += 1;
+    if (audioSourceRef.current) {
+      try { audioSourceRef.current.stop(); } catch { /* It may have already finished. */ }
+      audioSourceRef.current.disconnect();
+    }
+    void audioContextRef.current?.close();
+  }, []);
 
   const loadNext = useCallback(async (excludeWordId?: string) => {
+    stopPronunciation();
+    activeWordIdRef.current = null;
     setLoading(true);
     setError(null);
     setRefreshMessage(null);
@@ -25,6 +55,7 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
     setDefinitions([]);
     try {
       const nextWord = await window.studydockBridge.wordQuizGetRandomWord(excludeWordId);
+      activeWordIdRef.current = nextWord?.id ?? null;
       setWord(nextWord);
     } catch {
       setError('Could not load a quiz word. Please try again.');
@@ -32,9 +63,50 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [stopPronunciation]);
 
   useEffect(() => { void loadNext(); }, [loadNext]);
+
+  const playPronunciation = async () => {
+    if (!word || pronunciationLoading) return;
+    const wordId = word.id;
+    const requestId = ++pronunciationRequestRef.current;
+    setPronunciationLoading(true);
+    setPronunciationError(null);
+    try {
+      const context = audioContextRef.current ?? new AudioContext();
+      audioContextRef.current = context;
+      await context.resume();
+      const pronunciation = await window.studydockBridge.vocabGetPronunciation(wordId);
+      if (pronunciationRequestRef.current !== requestId || activeWordIdRef.current !== wordId) return;
+      if (pronunciation.mimeType !== 'audio/mulaw' || pronunciation.sampleRate !== 8000) {
+        throw new Error('Gemini returned an unsupported pronunciation format.');
+      }
+      const binary = atob(pronunciation.data);
+      const encoded = Uint8Array.from(binary, character => character.charCodeAt(0));
+      const samples = decodeMuLawPcm(encoded);
+      const buffer = context.createBuffer(1, samples.length, pronunciation.sampleRate);
+      buffer.getChannelData(0).set(samples);
+      if (audioSourceRef.current) {
+        try { audioSourceRef.current.stop(); } catch { /* It may have already finished. */ }
+        audioSourceRef.current.disconnect();
+      }
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(context.destination);
+      source.onended = () => {
+        if (audioSourceRef.current === source) audioSourceRef.current = null;
+      };
+      audioSourceRef.current = source;
+      source.start();
+    } catch (error: unknown) {
+      if (pronunciationRequestRef.current === requestId && activeWordIdRef.current === wordId) {
+        setPronunciationError(error instanceof Error ? error.message : 'Could not play this pronunciation.');
+      }
+    } finally {
+      if (pronunciationRequestRef.current === requestId && activeWordIdRef.current === wordId) setPronunciationLoading(false);
+    }
+  };
 
   const reveal = async () => {
     if (!word || revealed) return;
@@ -69,6 +141,8 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
   };
 
   const selectLibraryWord = async (wordId: string) => {
+    stopPronunciation();
+    activeWordIdRef.current = null;
     setLoading(true);
     setError(null);
     setRefreshMessage(null);
@@ -81,6 +155,7 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
         setWord(null);
         return;
       }
+      activeWordIdRef.current = selectedWord.id;
       setWord(selectedWord);
     } catch {
       setError('Could not load that word for the quiz. Please try again.');
@@ -107,8 +182,15 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
       ) : word ? (
         <section className="card quiz-card" aria-live="polite">
           <div className="quiz-eyebrow">YOUR WORD</div>
-          <div className="quiz-word">{word.displayWord}</div>
+          <div className="quiz-word-row">
+            <div className="quiz-word">{word.displayWord}</div>
+            <button className="btn btn-secondary btn-sm" type="button" onClick={() => void playPronunciation()} disabled={pronunciationLoading || isRefreshing} title="Generate and play this word’s pronunciation with Gemini; audio is cached for offline replay" aria-label={`Play pronunciation of ${word.displayWord}`}>
+              <Volume2 size={16} />{pronunciationLoading ? 'Generating audio…' : 'Hear pronunciation'}
+            </button>
+          </div>
           <div className="quiz-language">Try to recall its meaning before revealing it.</div>
+          <p className="pronunciation-note">First play may use Gemini API quota. Generated audio is cached for offline replay.</p>
+          {pronunciationError && <p className="pronunciation-error" role="alert">{pronunciationError}</p>}
 
           {revealed && <div className="quiz-answer">
             {definitions.map(definition => <article className="quiz-sense" key={definition.id}>

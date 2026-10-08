@@ -395,7 +395,9 @@ html, body, #root {
 .quiz-icon { width: 46px; height: 46px; display: grid; place-items: center; flex: 0 0 auto; border-radius: var(--radius-md); color: var(--accent-primary); background: var(--info-bg); }
 .quiz-card { width: 100%; min-height: 330px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 28px; }
 .quiz-eyebrow { color: var(--text-dim); font-size: .78rem; font-weight: 600; letter-spacing: .08em; }
+.quiz-word-row { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px; }
 .quiz-word { color: var(--text-primary); font: 500 clamp(2.8rem, 8vw, 4.4rem)/1.2 Georgia, serif; margin: 18px 0 10px; overflow-wrap: anywhere; }
+.quiz-word-row .quiz-word { margin: 18px 0 10px; }
 .quiz-language { color: var(--text-secondary); }
 .quiz-answer { width: min(560px, 100%); margin: 26px auto 0; padding: 20px; text-align: left; background: var(--bg-tertiary); border-radius: var(--radius-md); }
 .vocab-synonyms { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 14px; }

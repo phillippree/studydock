@@ -176,7 +176,7 @@ npm ci
 bash scripts/build-macos-dmg.sh
 ```
 
-The script checks that GitHub CLI (`gh`) is installed, authenticated, and can access a Release matching the version in `package.json` (for example, tag `v1.4.0`). Create that release first; a draft release is fine. It then builds the TypeScript/renderer application, packages a `.dmg` for the Mac's current architecture, and uploads it to that Release. If an asset with the same filename is already attached, the upload stops instead of replacing it; remove or rename the old asset before retrying. You can also use `npm run package:mac`. Apple Developer signing and notarization are not configured, so macOS may show a first-open security warning.
+The script checks that GitHub CLI (`gh`) is installed and authenticated, and that the matching version tag (for example, `v1.5.0`) exists in `phillippree/studydock`. It then builds the TypeScript/renderer application and packages a `.dmg` for the Mac's current architecture. If a GitHub Release already exists for that tag, the script uploads the image to it; otherwise, it creates a draft release with generated release notes and attaches the image. Review the draft and publish it on GitHub when ready. If an asset with the same filename is already attached, the upload stops instead of replacing it; remove or rename the old asset before retrying. You can also use `npm run package:mac`. Apple Developer signing and notarization are not configured, so macOS may show a first-open security warning.
 
 ##### If macOS says StudyDock is damaged
 
@@ -227,13 +227,13 @@ git push origin main
 git push origin v1.3.0
 ```
 
-Replace `v1.3.0` with the tag created for your version. If the script reports that the tag push failed after `main` was pushed, retry the second command. This script does not publish a GitHub Release. After creating a release for the tag, run the macOS DMG script above to build and upload its disk image.
+Replace `v1.3.0` with the tag created for your version. If the script reports that the tag push failed after `main` was pushed, retry the second command. The macOS DMG script above creates a draft release for the tag if needed, then builds and attaches the disk image.
 
 ### Application updates
 
 At launch, StudyDock checks the latest published GitHub Release for `phillippree/studydock`. If its version is newer than the installed app, an **Update to x.y.z** button appears beside the app version in the footer. The button opens the GitHub Release page so you can download and install the macOS disk image. StudyDock does not pull source code or rebuild and reinstall itself.
 
-To publish an update, create a GitHub Release with a semantic version tag that matches `package.json`, then run `bash scripts/build-macos-dmg.sh` on a Mac. The script attaches the architecture-specific `.dmg` to that release. The update button appears once a newer version is published as a non-draft release. Automatic download and installation could be added later with Electron's updater and GitHub Releases. macOS requires a code signature for auto-updating to work; notarization is recommended for distributing the app without the normal first-open security warning.
+To prepare an update, push the semantic version tag that matches `package.json`, then run `bash scripts/build-macos-dmg.sh` on a Mac. The script creates a draft GitHub Release with generated notes if one does not exist and attaches the architecture-specific `.dmg`. Review and publish the draft when it is ready. The update button appears once a newer version is published as a non-draft release. Automatic download and installation could be added later with Electron's updater and GitHub Releases. macOS requires a code signature for auto-updating to work; notarization is recommended for distributing the app without the normal first-open security warning.
 
 ---
 

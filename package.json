@@ -1,6 +1,6 @@
 {
   "name": "studydock",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "StudyDock - Personal learning hub desktop application",
   "main": "dist/main/index.js",
   "scripts": {

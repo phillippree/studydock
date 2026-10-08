@@ -40,9 +40,9 @@ if ! gh auth status --hostname github.com >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
-  echo "GitHub Release '$TAG' was not found in $REPOSITORY." >&2
-  echo "Create a release (a draft is fine) with this tag, then run this script again." >&2
+if ! gh api "repos/$REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+  echo "GitHub tag '$TAG' was not found in $REPOSITORY." >&2
+  echo "Push the matching version tag first, then run this script again." >&2
   exit 1
 fi
 
@@ -55,6 +55,16 @@ if [[ ! -f "$DMG_PATH" ]]; then
   exit 1
 fi
 
-gh release upload "$TAG" "$DMG_PATH" --repo "$REPOSITORY"
+if gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+  gh release upload "$TAG" "$DMG_PATH" --repo "$REPOSITORY"
+else
+  gh release create "$TAG" "$DMG_PATH" \
+    --repo "$REPOSITORY" \
+    --draft \
+    --title "StudyDock $TAG" \
+    --generate-notes \
+    --verify-tag
+fi
 
-echo "StudyDock disk image created and uploaded to GitHub Release $TAG: $DMG_PATH"
+echo "StudyDock disk image created and attached to GitHub Release $TAG: $DMG_PATH"
+echo "Review the release notes and publish the draft on GitHub when you're ready."
