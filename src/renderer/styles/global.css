@@ -420,6 +420,27 @@ html, body, #root {
 .pronunciation-note { margin-top: 6px; color: var(--text-dim); font-size: .76rem; }
 .quiz-example { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; }
 .expressions-page { width: min(1080px, 100%); min-height: 100%; margin: 0 auto; padding: 36px 28px 48px; display: flex; flex-direction: column; gap: 26px; }
+.connectors-page { width: min(1080px, 100%); min-height: 100%; margin: 0 auto; padding: 36px 28px 48px; display: flex; flex-direction: column; gap: 24px; }
+.connectors-heading { display: flex; align-items: center; gap: 14px; }
+.connectors-heading h1 { font-size: 1.65rem; font-weight: 600; }
+.connectors-heading p, .connectors-library-heading p { color: var(--text-secondary); margin-top: 4px; }
+.connectors-icon { width: 48px; height: 48px; display: grid; place-items: center; flex: 0 0 auto; color: var(--accent-primary); background: var(--info-bg); border-radius: var(--radius-md); }
+.connectors-count { margin-left: auto; white-space: nowrap; }
+.connectors-lookup { padding: 22px; }
+.connectors-lookup > h2, .connectors-library-heading h2 { display: flex; align-items: center; gap: 9px; font-size: 1.1rem; }
+.connectors-lookup > h2 svg, .connectors-library-heading h2 svg { color: var(--accent-primary); }
+.connectors-lookup > p { color: var(--text-secondary); margin: 7px 0 18px; font-size: .9rem; line-height: 1.5; }
+.connectors-lookup-form { display: flex; align-items: flex-end; gap: 14px; }
+.connectors-lookup-form .input-group { flex: 1; min-width: 160px; }
+.connectors-lookup-form .btn { flex: 0 0 auto; margin-bottom: 16px; white-space: nowrap; }
+.connectors-library { display: flex; flex-direction: column; gap: 16px; }
+.connectors-library-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.connectors-category-filter select { min-width: 185px; }
+.connectors-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 14px; }
+.connector-entry-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.connector-entry-heading h3 { margin-top: 5px; font-size: 1.22rem; }
+.connector-example-count { margin-top: 12px; color: var(--text-dim); font-size: .82rem; }
+.connector-preview { padding: 18px; }
 .expressions-heading, .expressions-title, .expressions-library-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .expressions-title { justify-content: flex-start; }
 .expressions-title h1 { font-size: 1.65rem; font-weight: 600; }
@@ -440,6 +461,8 @@ html, body, #root {
 .expressions-feedback svg { flex: 0 0 auto; margin-top: 2px; }
 .expressions-feedback.success { color: var(--success-text); background: var(--success-bg); }
 .expressions-feedback.error { color: var(--error-text); background: var(--error-bg); }
+.expression-correction { display: inline-block; margin: 0 10px; color: var(--text-primary); }
+.connector-suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .expressions-library { display: flex; flex-direction: column; gap: 16px; }
 .expressions-library-heading { align-items: flex-end; }
 .expressions-library-heading p { font-size: .87rem; }
@@ -522,6 +545,14 @@ html, body, #root {
 .word-suggestions .btn { text-transform: none; }
 @media (max-width: 680px) {
   .expressions-page { padding: 24px 16px 36px; }
+  .connectors-page { padding: 24px 16px 36px; }
+  .connectors-heading { align-items: flex-start; }
+  .connectors-heading h1 { font-size: 1.4rem; }
+  .connectors-count { margin-left: auto; }
+  .connectors-lookup-form { align-items: stretch; flex-direction: column; gap: 4px; }
+  .connectors-lookup-form .btn { align-self: flex-start; margin: 4px 0 0; }
+  .connectors-library-heading { align-items: flex-start; flex-direction: column; }
+  .connectors-category-filter, .connectors-category-filter select { width: 100%; }
   .expressions-heading, .expressions-library-heading { align-items: flex-start; flex-direction: column; }
   .expression-table-heading { align-items: flex-start; flex-direction: column; }
   .expressions-form-row { align-items: stretch; flex-direction: column; gap: 4px; }

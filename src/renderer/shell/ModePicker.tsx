@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { getAvailableModes } from './modeRegistry';
-import { BookOpen, Brain, ChevronDown, Check, Home, Layers } from 'lucide-react';
+import { BookOpen, Brain, ChevronDown, Check, Home, Layers, Workflow } from 'lucide-react';
 
 interface ModePickerProps {
   currentModeId: string | null;
@@ -40,7 +40,7 @@ export const ModePicker: React.FC<ModePickerProps> = ({ currentModeId, onSelectM
           className={`btn btn-sm ${currentModeId === modes[0].id ? 'btn-primary' : 'btn-ghost'}`}
           onClick={() => onSelectMode(modes[0].id)}
         >
-          {modes[0].iconName === 'Brain' ? <Brain size={16} /> : <BookOpen size={16} />}
+          {modes[0].iconName === 'Brain' ? <Brain size={16} /> : modes[0].iconName === 'Workflow' ? <Workflow size={16} /> : <BookOpen size={16} />}
           {modes[0].displayName}
         </button>
       ) : (
@@ -99,7 +99,7 @@ export const ModePicker: React.FC<ModePickerProps> = ({ currentModeId, onSelectM
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {mode.iconName === 'Brain' ? <Brain size={16} /> : <BookOpen size={16} />}
+                      {mode.iconName === 'Brain' ? <Brain size={16} /> : mode.iconName === 'Workflow' ? <Workflow size={16} /> : <BookOpen size={16} />}
                       <span style={{ fontWeight: isSelected ? 600 : 400 }}>{mode.displayName}</span>
                     </div>
                     {isSelected && <Check size={16} />}

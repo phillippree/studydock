@@ -1,5 +1,5 @@
 import React from 'react';
-import { IDIOMS_PHRASES_MODE, ModeDescriptor } from '../../shared/contracts/modes';
+import { CONNECTORS_MODE, IDIOMS_PHRASES_MODE, ModeDescriptor } from '../../shared/contracts/modes';
 
 export interface RegisteredMode {
   descriptor: ModeDescriptor;
@@ -30,6 +30,10 @@ export const modeRegistry: Record<string, RegisteredMode> = {
   'idioms-phrases': {
     descriptor: IDIOMS_PHRASES_MODE,
     component: React.lazy(() => import('../modes/idioms-phrases'))
+  },
+  connectors: {
+    descriptor: CONNECTORS_MODE,
+    component: React.lazy(() => import('../modes/connectors'))
   }
 };
 

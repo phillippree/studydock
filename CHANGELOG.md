@@ -6,7 +6,16 @@ Notable StudyDock changes are recorded here. Entries are grouped by the app's re
 
 ### Added
 - Added a sentence refresh button to the revealed answer in Idioms & Phrases practice.
+- Added a Connectors mode with its own searchable local library, Gemini previews, category labels, six voice-labeled examples, and explicit save flow.
 - Idiom and phrase lookups now show a preview before saving to the library.
+
+### Changed
+- Phrase is now the default type in the Idioms & Phrases lookup form.
+
+### Fixed
+- Connector lookups now accept an empty Gemini suggestion when no spelling correction is needed.
+- Connector lookups now handle null meanings and convert Gemini's explanatory alternatives into selectable suggestions.
+- Idiom and phrase lookups now surface clean grammatical corrections and let you use the suggested expression.
 
 ## [1.2.3] - 2026-10-06
 

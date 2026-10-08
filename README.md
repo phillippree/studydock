@@ -2,7 +2,7 @@
 
 **StudyDock** is an offline-first desktop personal learning hub built with **Electron**, **TypeScript**, **React**, **Vite**, **SQLite**, and the **Google Gemini SDK**.
 
-The application features an extensible, modular architecture with independent learning modes. **Vocabulary** and **Word Quiz** use the same local word library. **Idioms & Phrases** has its own verified lookup flow and local expression library.
+The application features an extensible, modular architecture with independent learning modes. **Vocabulary** and **Word Quiz** use the same local word library. **Idioms & Phrases** and **Connectors** have separate verified lookup flows and local libraries.
 
 ## Screenshots
 
@@ -320,7 +320,11 @@ Adding a new vocabulary entry from **Add Word** asks Gemini to verify the term a
 
 ### Idioms & Phrases
 
-Choose **Idiom** or **Phrase**, enter an expression, and choose **Look up & Save**. Gemini verifies the expression and returns a meaning and natural example sentences. Recognized expressions are stored locally; unrecognized expressions are not saved. The library can be searched, filtered by type, and browsed in six-entry pages while remaining available offline. Choose **Practice** to open the offline **Guess the meaning** quiz: the expression appears first, and its saved meaning and examples are loaded only after **Reveal meaning**. New lookups require a configured Gemini key and internet access, and may incur API usage. Data is stored in the mode-owned `idioms_phrases_entries` and `idioms_phrases_examples` tables; the mode has its own prompt, validation, service, repository, migration, renderer, and IPC operations.
+Choose **Idiom** or **Phrase**, enter an expression, and choose **Look up**. Gemini verifies it and returns a preview with its meaning and six example sentences. Choose **Save to Library** to keep it locally, or discard the preview. The library can be searched, filtered by type, and browsed in six-entry pages while remaining available offline. Choose **Practice** to open the offline **Guess the meaning** quiz. New lookups require a configured Gemini key and internet access, and may incur API usage. Data is stored in the mode-owned `idioms_phrases_entries` and `idioms_phrases_examples` tables; the mode has its own prompt, validation, service, repository, migration, renderer, and IPC operations.
+
+### Connectors
+
+Enter a conjunction, transition word, or linking phrase such as **however**, **therefore**, or **in addition**, then choose **Look up**. Gemini identifies its connective role (addition, contrast, cause and effect, sequence, example, conclusion, condition, comparison, or conjunction) and previews its meaning with six distinct examples labeled by grammatical voice. Choose **Save to Library** to store the connector and examples locally. The searchable, category-filtered library is paginated, available offline, and provides a detail card where examples can be refreshed. Lookups and refreshes require a configured Gemini key and internet access, and may incur API usage. Connector data uses its own `connectors_entries` and `connectors_examples` tables, migration, prompt, validation, service, repository, renderer entry point, and IPC operations.
 
 ---
 

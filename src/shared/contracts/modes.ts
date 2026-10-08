@@ -14,3 +14,11 @@ export const IDIOMS_PHRASES_MODE: ModeDescriptor = {
   iconName: 'Quote',
   order: 3,
 };
+
+export const CONNECTORS_MODE: ModeDescriptor = {
+  id: 'connectors',
+  displayName: 'Connectors',
+  description: 'Learn words and phrases that connect ideas and guide sentences.',
+  iconName: 'Workflow',
+  order: 4
+};

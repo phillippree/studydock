@@ -11,7 +11,7 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
   const [entries, setEntries] = useState<IdiomPhraseEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [expression, setExpression] = useState('');
-  const [type, setType] = useState<ExpressionType>('idiom');
+  const [type, setType] = useState<ExpressionType>('phrase');
   const [filter, setFilter] = useState<'all' | ExpressionType>('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
@@ -20,7 +20,7 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [isSavingPreview, setIsSavingPreview] = useState(false);
   const [lookupPreview, setLookupPreview] = useState<ExpressionLookupPreview | null>(null);
-  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; message: string; suggestion?: string } | null>(null);
   const requestSequence = useRef(0);
   const hasLibraryQuery = search.trim().length > 0 || filter !== 'all';
   const [view, setView] = useState<'home' | 'library' | 'quiz'>('home');
@@ -155,7 +155,11 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
     try {
       const result = await window.studydockBridge.idiomsPhrasesLookup({ expression, type });
       if (result.status === 'unrecognized') {
-        setFeedback({ kind: 'error', message: `Gemini couldn't confirm “${result.expression}” as a ${type}.${result.suggestion ? ` Did you mean “${result.suggestion}”?` : ''} It wasn't saved.` });
+        setFeedback({
+          kind: result.suggestion ? 'success' : 'error',
+          message: result.suggestion ? `This expression may need a correction. Suggested ${type}:` : `Gemini couldn't confirm “${result.expression}” as a ${type}. It wasn't saved.`,
+          suggestion: result.suggestion
+        });
       } else if (result.status === 'duplicate') {
         setFeedback({ kind: 'success', message: `“${result.entry.expression}” is already in your saved ${type === 'idiom' ? 'idioms' : 'phrases'}.` });
       } else {
@@ -264,7 +268,8 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
           <div className="expression-preview-actions"><button className="btn btn-primary" onClick={() => void saveLookupPreview()} disabled={isSavingPreview}>{isSavingPreview ? <span className="spinner" /> : <Plus size={16} />}{isSavingPreview ? 'Saving…' : 'Save to Library'}</button><button className="btn btn-secondary" onClick={() => setLookupPreview(null)} disabled={isSavingPreview}>Discard preview</button></div>
         </article>}
         {feedback && <div className={`expressions-feedback ${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>
-          {feedback.kind === 'error' ? <AlertCircle size={17} /> : <CheckCircle size={17} />}{feedback.message}
+          {feedback.kind === 'error' ? <AlertCircle size={17} /> : <CheckCircle size={17} />}
+          <span>{feedback.message}{feedback.suggestion && <><strong className="expression-correction">{feedback.suggestion}</strong><button type="button" className="btn btn-secondary btn-sm" onClick={() => { setExpression(feedback.suggestion!); setFeedback(null); }}>Use suggestion</button></>}</span>
         </div>}
       </section>
 

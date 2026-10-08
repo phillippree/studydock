@@ -20,7 +20,7 @@ export function buildExpressionLookupPrompt(expression: string, language: string
         { example: 'A natural example sentence using the expression.', voice: 'active' },
         { example: 'A natural example sentence using the expression.', voice: 'other' }
       ],
-      suggestion: 'Optional correction when the submitted expression is not recognized.'
+      suggestion: 'When the submitted expression is misspelled or grammatically incorrect, provide only the corrected idiom or phrase, with no quotes or explanation. Otherwise use null.'
     }
   });
 }
@@ -55,6 +55,7 @@ export function buildExpressionSystemInstruction(): string {
     'Return only a JSON object matching the requested format.',
     'Verify that it is a recognized idiom or phrase in the requested language and matches the requested type as closely as possible.',
     'If it is not a recognized expression, set recognized to false, omit meaning, return an empty examples array, and suggest a likely correction only when appropriate.',
+    'When suggesting a correction, return only the corrected expression in suggestion, without quotes or explanation. If you can identify a corrected phrase, provide it even if the submitted phrase is close to a real expression.',
     'For a recognized expression, explain its meaning clearly and give exactly six distinct, natural example sentences that demonstrate ordinary usage.',
     'Return each example as an object with example (the full sentence using the expression) and voice (active, passive, or other). Include both active and passive examples when they are grammatically natural for this expression.',
     'Many idioms and fixed phrases do not naturally convert between active and passive voice. Never force an unnatural construction; label examples other when active or passive voice does not sensibly apply.'

@@ -16,6 +16,7 @@ import {
 import { WordQuizAnswer } from './wordQuiz';
 import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt, LookupExpressionResult, SaveExpressionResult } from './idiomsPhrases';
 import { UpdateCheckResult } from './updates';
+import { ConnectorEntry, ConnectorListPage, ConnectorListQuery, ConnectorLookupResult, ConnectorSaveResult } from './connectors';
 
 export interface StudyDockAPI {
   // Application updates
@@ -63,6 +64,12 @@ export interface StudyDockAPI {
   idiomsPhrasesRefreshExamples(id: string): Promise<IdiomPhraseEntry>;
   idiomsPhrasesQuizGetRandom(type?: ExpressionType, excludeId?: string): Promise<IdiomPhraseQuizPrompt | null>;
   idiomsPhrasesQuizReveal(id: string): Promise<IdiomPhraseEntry>;
+
+  // Connectors mode
+  connectorsList(query?: ConnectorListQuery): Promise<ConnectorListPage>;
+  connectorsLookup(input: { connector: string; language?: string }): Promise<ConnectorLookupResult>;
+  connectorsSavePreview(token: string): Promise<ConnectorSaveResult>;
+  connectorsRefreshExamples(id: string): Promise<ConnectorEntry>;
 }
 
 declare global {

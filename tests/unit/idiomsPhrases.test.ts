@@ -86,6 +86,32 @@ describe('Idioms & Phrases mode', () => {
     expect(repository.list({ offset: 0, limit: 6 }).entries).toEqual([]);
   });
 
+  it('extracts a clean suggested correction from Gemini explanatory text', () => {
+    const typo = 'the little things in life matters';
+    const correction = validateExpressionLookup({
+      expression: typo, type: 'idiom', language: 'en', recognized: true,
+      meaning: 'Small moments are important.', examples: sixExamples,
+      suggestion: "The correct grammatical form is 'the little things in life matter' (plural subject)."
+    }, typo, 'en', 'idiom');
+    expect(correction).toEqual({
+      expression: typo, language: 'en', recognized: false, examples: [],
+      suggestion: 'the little things in life matter'
+    });
+  });
+
+  it('returns a grammar correction instead of treating the ungrammatical entry as a valid preview', async () => {
+    const rawResponse = {
+      expression: 'the little things in life matters', type: 'idiom', language: 'en', recognized: true,
+      meaning: 'Small moments are important.', examples: sixExamples,
+      suggestion: "The correct grammatical form is 'the little things in life matter' (plural subject)."
+    };
+    vi.spyOn(gemini, 'generateStructured').mockImplementationOnce(async request => request.schemaValidator(rawResponse));
+    await expect(service.lookup('the little things in life matters', 'idiom')).resolves.toMatchObject({
+      status: 'unrecognized', suggestion: 'the little things in life matter'
+    });
+    expect(repository.list({ offset: 0, limit: 6 }).entries).toEqual([]);
+  });
+
   it('returns the saved record for duplicates without another Gemini request', async () => {
     const existing = repository.save({
       expression: 'on the same page', normalizedExpression: 'on the same page', type: 'phrase', language: 'en',

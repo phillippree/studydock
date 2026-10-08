@@ -14,7 +14,8 @@ describe('learning mode registry', () => {
   });
 
   it('keeps the implemented modes available', () => {
-    expect(getAvailableModes().map(mode => mode.id)).toEqual(['vocab', 'word-quiz', 'idioms-phrases']);
+    expect(getAvailableModes().map(mode => mode.id)).toEqual(['vocab', 'word-quiz', 'idioms-phrases', 'connectors']);
     expect(getModeComponent('word-quiz')).not.toBeNull();
+    expect(getModeComponent('connectors')).not.toBeNull();
   });
 });

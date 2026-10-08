@@ -45,7 +45,13 @@ const api: StudyDockAPI = {
   idiomsPhrasesSavePreview: (token) => ipcRenderer.invoke('idiomsPhrases:savePreview', token),
   idiomsPhrasesRefreshExamples: (id) => ipcRenderer.invoke('idiomsPhrases:refreshExamples', id),
   idiomsPhrasesQuizGetRandom: (type, excludeId) => ipcRenderer.invoke('idiomsPhrases:quizGetRandom', { type, excludeId }),
-  idiomsPhrasesQuizReveal: (id) => ipcRenderer.invoke('idiomsPhrases:quizReveal', id)
+  idiomsPhrasesQuizReveal: (id) => ipcRenderer.invoke('idiomsPhrases:quizReveal', id),
+
+  // Connectors mode
+  connectorsList: (query) => ipcRenderer.invoke('connectors:list', query),
+  connectorsLookup: (input) => ipcRenderer.invoke('connectors:lookup', input),
+  connectorsSavePreview: (token) => ipcRenderer.invoke('connectors:savePreview', token),
+  connectorsRefreshExamples: (id) => ipcRenderer.invoke('connectors:refreshExamples', id)
 };
 
 contextBridge.exposeInMainWorld('studydockBridge', api);
