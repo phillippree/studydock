@@ -28,6 +28,7 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizRevealing, setQuizRevealing] = useState(false);
   const [quizError, setQuizError] = useState<string | null>(null);
+  const [quizRefreshMessage, setQuizRefreshMessage] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const quizRequestSequence = useRef(0);
   const [refreshingEntryId, setRefreshingEntryId] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<IdiomPhraseEntry | null>(null);
@@ -47,6 +48,7 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
     setQuizLoading(true);
     setQuizAnswer(null);
     setQuizError(null);
+    setQuizRefreshMessage(null);
     try {
       const prompt = await window.studydockBridge.idiomsPhrasesQuizGetRandom(
         selectedFilter === 'all' ? undefined : selectedFilter,
@@ -83,11 +85,15 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
       setEntries(current => current.map(entry => entry.id === id ? updated : entry));
       setSelectedEntry(current => current?.id === id ? updated : current);
       const message = `Refreshed six example sentences for “${updated.expression}”.`;
-      if (selectedEntry?.id === id) setDetailRefreshMessage({ kind: 'success', message });
+      if (quizAnswer?.id === id && quizPrompt?.id === id) {
+        setQuizAnswer(updated);
+        setQuizRefreshMessage({ kind: 'success', message });
+      } else if (selectedEntry?.id === id) setDetailRefreshMessage({ kind: 'success', message });
       else setFeedback({ kind: 'success', message });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Could not refresh these example sentences.';
-      if (selectedEntry?.id === id) setDetailRefreshMessage({ kind: 'error', message });
+      if (quizAnswer?.id === id && quizPrompt?.id === id) setQuizRefreshMessage({ kind: 'error', message });
+      else if (selectedEntry?.id === id) setDetailRefreshMessage({ kind: 'error', message });
       else setFeedback({ kind: 'error', message });
     } finally {
       setRefreshingEntryId(null);
@@ -102,7 +108,10 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
     setQuizError(null);
     try {
       const answer = await window.studydockBridge.idiomsPhrasesQuizReveal(currentId);
-      if (requestId === quizRequestSequence.current && quizPrompt?.id === currentId) setQuizAnswer(answer);
+      if (requestId === quizRequestSequence.current && quizPrompt?.id === currentId) {
+        setQuizAnswer(answer);
+        setQuizRefreshMessage(null);
+      }
     } catch (err: unknown) {
       if (requestId === quizRequestSequence.current) setQuizError(err instanceof Error ? err.message : 'Could not reveal this expression.');
     } finally {
@@ -180,7 +189,11 @@ export const IdiomsPhrasesPage: React.FC<IdiomsPhrasesPageProps> = () => {
           <p className="expression-language">{quizPrompt.language.toUpperCase()}</p>
           {quizAnswer && <div className="expression-quiz-answer" aria-live="polite">
             <h3>Meaning</h3><p>{quizAnswer.meaning}</p>
-            {quizAnswer.examples.length > 0 && <div className="expression-examples">{quizAnswer.examples.map(example => <p key={example.id}><span className={`expression-example-voice ${example.voice}`}>{example.voice}</span>“{example.example}”</p>)}</div>}
+            <div className="expression-quiz-examples">
+              <div className="expression-quiz-examples-heading"><h3>Examples <span className="badge badge-saved">{quizAnswer.examples.length}</span></h3><button className="btn btn-secondary btn-sm expression-refresh-button" onClick={() => void refreshExamples(quizAnswer.id)} disabled={refreshingEntryId !== null} aria-label={`Refresh six example sentences for ${quizAnswer.expression}`} title="Generate and save six new example sentences">{refreshingEntryId === quizAnswer.id ? <span className="spinner" /> : <RefreshCw size={15} />}{refreshingEntryId === quizAnswer.id ? 'Refreshing…' : 'Refresh sentences'}</button></div>
+              {quizAnswer.examples.length > 0 ? <div className="expression-examples">{quizAnswer.examples.map(example => <p key={example.id}><span className={`expression-example-voice ${example.voice}`}>{example.voice}</span>“{example.example}”</p>)}</div> : <p className="expression-detail-empty">No example sentences have been saved yet.</p>}
+              {quizRefreshMessage && <div className={`expressions-feedback ${quizRefreshMessage.kind}`} role={quizRefreshMessage.kind === 'error' ? 'alert' : 'status'}>{quizRefreshMessage.kind === 'error' ? <AlertCircle size={17} /> : <CheckCircle size={17} />}{quizRefreshMessage.message}</div>}
+            </div>
           </div>}
           {quizError && <p className="quiz-error" role="alert"><AlertCircle size={16} />{quizError}</p>}
           <div className="expression-quiz-actions">

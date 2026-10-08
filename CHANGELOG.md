@@ -4,6 +4,9 @@ Notable StudyDock changes are recorded here. Entries are grouped by the app's re
 
 ## [Unreleased]
 
+### Added
+- Added a sentence refresh button to the revealed answer in Idioms & Phrases practice.
+
 ## [1.2.3] - 2026-10-06
 
 ### Added
