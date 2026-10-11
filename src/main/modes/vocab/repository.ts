@@ -3,11 +3,27 @@ import {
   PartOfSpeech,
   VocabExample,
   VocabDefinition,
+  VocabRelatedForm,
   VocabWord
 } from '../../../shared/contracts/vocab';
 
 export class VocabRepository {
   constructor(private db: Database) {}
+
+  public getRelatedFormsForWord(wordId: string): VocabRelatedForm[] {
+    return this.db.prepare(`
+      SELECT form, part_of_speech AS partOfSpeech
+      FROM vocab_related_forms WHERE word_id = ? ORDER BY position
+    `).all(wordId) as VocabRelatedForm[];
+  }
+
+  private insertRelatedForms(wordId: string, forms: VocabRelatedForm[]): void {
+    const insert = this.db.prepare(`
+      INSERT INTO vocab_related_forms (word_id, form, part_of_speech, position)
+      VALUES (?, ?, ?, ?)
+    `);
+    forms.forEach((item, index) => insert.run(wordId, item.form, item.partOfSpeech, index + 1));
+  }
 
   private hydrateDefinitions(rows: Array<Omit<VocabDefinition, 'examples' | 'synonyms'>>): VocabDefinition[] {
     if (rows.length === 0) return [];
@@ -175,7 +191,8 @@ export class VocabRepository {
       source: string;
       modelIdentifier?: string;
       promptVersion?: number;
-    }>
+    }>,
+    relatedForms: VocabRelatedForm[] = []
   ): { word: VocabWord; definitions: VocabDefinition[] } {
     const now = new Date().toISOString();
     const wordId = `word_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -224,6 +241,7 @@ export class VocabRepository {
           updatedAt: now
         });
       });
+      this.insertRelatedForms(wordId, relatedForms);
     });
     save();
 
@@ -257,6 +275,7 @@ export class VocabRepository {
       // If the word's lexical identity changed, clear the previous definitions
       if (normalizedChanged) {
         this.db.prepare('DELETE FROM vocab_definitions WHERE word_id = ?').run(id);
+        this.db.prepare('DELETE FROM vocab_related_forms WHERE word_id = ?').run(id);
       }
     });
 
@@ -315,7 +334,8 @@ export class VocabRepository {
       source: string;
       modelIdentifier?: string;
       promptVersion?: number;
-    }>
+    }>,
+    relatedForms: VocabRelatedForm[] = []
   ): VocabDefinition[] {
     const now = new Date().toISOString();
     const result: VocabDefinition[] = [];
@@ -323,6 +343,7 @@ export class VocabRepository {
     const runTransaction = this.db.transaction(() => {
       // Clear existing
       this.db.prepare('DELETE FROM vocab_definitions WHERE word_id = ?').run(wordId);
+      this.db.prepare('DELETE FROM vocab_related_forms WHERE word_id = ?').run(wordId);
 
       const insert = this.db.prepare(`
         INSERT INTO vocab_definitions (
@@ -366,6 +387,7 @@ export class VocabRepository {
           updatedAt: now
         });
       }
+      this.insertRelatedForms(wordId, relatedForms);
     });
 
     runTransaction();
@@ -463,7 +485,7 @@ export class VocabRepository {
     return info.changes > 0;
   }
 
-  public getAllWordsWithDefinitions(): Array<VocabWord & { definitions: VocabDefinition[] }> {
+  public getAllWordsWithDefinitions(): Array<VocabWord & { definitions: VocabDefinition[]; relatedForms: VocabRelatedForm[] }> {
     const words = this.db.prepare(`
       SELECT id, display_word as displayWord, normalized_word as normalizedWord, language, created_at as createdAt, updated_at as updatedAt
       FROM vocab_words
@@ -497,7 +519,8 @@ export class VocabRepository {
 
     return words.map(w => ({
       ...w,
-      definitions: defMap.get(w.id) || []
+      definitions: defMap.get(w.id) || [],
+      relatedForms: this.getRelatedFormsForWord(w.id)
     }));
   }
 }

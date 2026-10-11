@@ -18,6 +18,7 @@ import {
 import {
   PartOfSpeech,
   VocabDefinition,
+  VocabRelatedForm,
   VocabWord,
   ImportWordsResult
 } from '../../../shared/contracts/vocab';
@@ -71,7 +72,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Undo delete state
-  const [deletedWordUndo, setDeletedWordUndo] = useState<{ word: VocabWord; definitions: VocabDefinition[] } | null>(null);
+  const [deletedWordUndo, setDeletedWordUndo] = useState<{ word: VocabWord; definitions: VocabDefinition[]; relatedForms: VocabRelatedForm[] } | null>(null);
 
   const loadWords = async () => {
     setIsLoading(true);
@@ -193,7 +194,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
       const details = await window.studydockBridge.vocabGetWordDetails(wordId);
       const res = await window.studydockBridge.vocabDeleteWord(wordId);
       if (res.success && details) {
-        setDeletedWordUndo({ word: res.deletedWord, definitions: details.definitions });
+        setDeletedWordUndo({ word: res.deletedWord, definitions: details.definitions, relatedForms: details.relatedForms ?? [] });
         await loadWords();
         onWordListChanged();
       }
@@ -206,17 +207,18 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
     if (!deletedWordUndo) return;
     try {
       const created = await window.studydockBridge.vocabAddWord({ word: deletedWordUndo.word.displayWord });
-      for (const def of deletedWordUndo.definitions) {
-        await window.studydockBridge.vocabAddDefinition({
-          wordId: created.word.id,
+      await window.studydockBridge.vocabSaveDefinitionRetry(
+        created.word.id,
+        deletedWordUndo.definitions.map(def => ({
           partOfSpeech: def.partOfSpeech,
           definition: def.definition,
           example: def.example,
           examples: def.examples,
           synonyms: def.synonyms,
           source: def.source
-        });
-      }
+        })),
+        deletedWordUndo.relatedForms
+      );
       setDeletedWordUndo(null);
       await loadWords();
       onWordListChanged();

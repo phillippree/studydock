@@ -7,6 +7,8 @@ import { SettingsService } from '../../settings/service';
 import { ModeDescriptor } from '../../../shared/contracts/modes';
 import { vocabMigrations } from './migrations';
 import { VocabPronunciationService } from './pronunciation';
+import { z } from 'zod';
+import { ALLOWED_PARTS_OF_SPEECH } from './schema';
 
 export const vocabModeDescriptor: ModeDescriptor = {
   id: 'vocab',
@@ -37,11 +39,21 @@ export function registerVocabMode(
     return service.fetchDefinition(wordId, Boolean(forceRefresh));
   });
 
-  ipcMain.handle('vocab:saveDefinitionRetry', async (_event, { wordId, senses }) => {
-    if (typeof wordId !== 'string' || !wordId || !Array.isArray(senses)) {
-      throw new Error('Invalid parameters for save retry');
-    }
-    return service.saveDefinitionRetry(wordId, senses);
+  ipcMain.handle('vocab:saveDefinitionRetry', async (event, input: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame) throw new Error('Unauthorized save retry request');
+    const request = z.object({
+      wordId: z.string().min(1),
+      senses: z.array(z.object({
+        partOfSpeech: z.enum(ALLOWED_PARTS_OF_SPEECH),
+        definition: z.string().min(1).max(1000),
+        example: z.string().max(1000),
+        examples: z.array(z.object({ example: z.string().min(1).max(1000), position: z.number().int().positive(), voice: z.enum(['active', 'passive', 'other']) })).optional(),
+        synonyms: z.array(z.string().min(1).max(100)).max(8).optional(),
+        source: z.enum(['gemini', 'manual', 'local']).optional()
+      })).max(12),
+      relatedForms: z.array(z.object({ form: z.string().trim().min(1).max(100), partOfSpeech: z.enum(ALLOWED_PARTS_OF_SPEECH) })).max(8).default([])
+    }).parse(input);
+    return service.saveDefinitionRetry(request.wordId, request.senses, request.relatedForms);
   });
 
   ipcMain.handle('vocab:getAllWords', async () => {

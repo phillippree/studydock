@@ -54,6 +54,11 @@ export interface VocabDefinition {
   updatedAt?: string;
 }
 
+export interface VocabRelatedForm {
+  form: string;
+  partOfSpeech: PartOfSpeech;
+}
+
 export type WordDefinitionStatus =
   | 'saved_locally'
   | 'generated_gemini'
@@ -65,6 +70,7 @@ export type WordDefinitionStatus =
 export interface VocabWordWithDefinitions {
   word: VocabWord;
   definitions: VocabDefinition[];
+  relatedForms?: VocabRelatedForm[];
   status: WordDefinitionStatus;
   generationError?: string;
 }
@@ -89,6 +95,7 @@ export interface GeminiVocabResponse {
   language: string;
   recognized: boolean;
   senses: GeminiVocabSense[];
+  relatedForms?: VocabRelatedForm[];
   suggestions?: string[];
 }
 
@@ -140,6 +147,7 @@ export interface ExportWordData {
   normalizedWord: string;
   language: string;
   createdAt: string;
+  relatedForms?: VocabRelatedForm[];
   definitions: Array<{
     partOfSpeech: string;
     definition: string;

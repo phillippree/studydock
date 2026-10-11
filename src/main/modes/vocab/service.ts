@@ -13,6 +13,7 @@ import {
   ImportWordsResult,
   VocabDefinition,
   VocabExample,
+  VocabRelatedForm,
   VocabWord,
   VocabWordWithDefinitions,
   VerifyAndAddWordResult
@@ -37,6 +38,7 @@ export class VocabService {
       return {
         word,
         definitions,
+        relatedForms: this.repository.getRelatedFormsForWord(word.id),
         status: 'saved_locally'
       };
     }
@@ -53,6 +55,7 @@ export class VocabService {
     return {
       word,
       definitions,
+      relatedForms: this.repository.getRelatedFormsForWord(word.id),
       status: definitions.length > 0 ? 'saved_locally' : 'not_saved'
     };
   }
@@ -68,10 +71,12 @@ export class VocabService {
     }
 
     const existingDefinitions = this.repository.getDefinitionsForWord(wordId);
+    const existingRelatedForms = this.repository.getRelatedFormsForWord(wordId);
     if (!forceRefresh && existingDefinitions.length > 0) {
       return {
         word,
         definitions: existingDefinitions,
+        relatedForms: existingRelatedForms,
         status: 'saved_locally'
       };
     }
@@ -81,7 +86,7 @@ export class VocabService {
       return this.inFlightRequests.get(wordId)!;
     }
 
-    const requestPromise = this.executeFetchDefinition(word, forceRefresh, existingDefinitions);
+    const requestPromise = this.executeFetchDefinition(word, existingDefinitions, existingRelatedForms);
     this.inFlightRequests.set(wordId, requestPromise);
 
     try {
@@ -93,14 +98,15 @@ export class VocabService {
 
   private async executeFetchDefinition(
     word: VocabWord,
-    _forceRefresh: boolean,
-    existingDefinitions: VocabDefinition[]
+    existingDefinitions: VocabDefinition[],
+    existingRelatedForms: VocabRelatedForm[]
   ): Promise<VocabWordWithDefinitions> {
     const apiKey = this.gemini.getApiKey();
     if (!apiKey) {
       return {
         word,
         definitions: existingDefinitions,
+        relatedForms: existingRelatedForms,
         status: existingDefinitions.length > 0 ? 'saved_locally' : 'not_saved',
         generationError: 'Gemini API key is not configured. Please add your key in Settings.'
       };
@@ -125,6 +131,7 @@ export class VocabService {
         return {
           word,
           definitions: existingDefinitions,
+          relatedForms: existingRelatedForms,
           status: 'error',
           generationError: 'The word was modified or deleted while generation was in progress.'
         };
@@ -134,6 +141,7 @@ export class VocabService {
         return {
           word: currentWord,
           definitions: existingDefinitions,
+          relatedForms: existingRelatedForms,
           status: 'unrecognized',
           generationError: `"${word.displayWord}" was not recognized as a valid lexical term by Gemini.`
         };
@@ -152,12 +160,14 @@ export class VocabService {
             source: 'gemini',
             modelIdentifier: model,
             promptVersion: VOCAB_PROMPT_VERSION
-          }))
+          })),
+          response.relatedForms ?? []
         );
 
         return {
           word: currentWord,
           definitions: savedDefinitions,
+          relatedForms: response.relatedForms ?? [],
           status: 'generated_gemini'
         };
       } catch (saveError: unknown) {
@@ -178,6 +188,7 @@ export class VocabService {
             promptVersion: VOCAB_PROMPT_VERSION,
             generatedAt: new Date().toISOString()
           })),
+          relatedForms: response.relatedForms ?? [],
           status: 'not_saved',
           generationError: `Definitions were generated but could not be saved to the database: ${msg}. Click 'Retry Save' to persist them.`
         };
@@ -188,6 +199,7 @@ export class VocabService {
       return {
         word,
         definitions: existingDefinitions,
+        relatedForms: existingRelatedForms,
         status: existingDefinitions.length > 0 ? 'saved_locally' : 'error',
         generationError: errorMsg
       };
@@ -196,7 +208,8 @@ export class VocabService {
 
   public async saveDefinitionRetry(
     wordId: string,
-    senses: Array<{ partOfSpeech: string; definition: string; example: string; examples?: VocabExample[]; synonyms?: string[]; source?: string }>
+    senses: Array<{ partOfSpeech: string; definition: string; example: string; examples?: VocabExample[]; synonyms?: string[]; source?: string }>,
+    relatedForms: VocabRelatedForm[] = []
   ): Promise<VocabWordWithDefinitions> {
     const word = this.repository.findWordById(wordId);
     if (!word) {
@@ -214,12 +227,14 @@ export class VocabService {
         source: s.source || 'gemini',
         modelIdentifier: this.settings.getModel(),
         promptVersion: VOCAB_PROMPT_VERSION
-      }))
+      })),
+      relatedForms
     );
 
     return {
       word,
       definitions: saved,
+      relatedForms,
       status: 'saved_locally'
     };
   }
@@ -323,7 +338,8 @@ export class VocabService {
           source: 'gemini',
           modelIdentifier: model,
           promptVersion: VOCAB_PROMPT_VERSION
-        }))
+        })),
+        response.relatedForms ?? []
       );
       return { status: 'added', ...saved };
     } catch (error: unknown) {
@@ -451,6 +467,7 @@ export class VocabService {
         normalizedWord: w.normalizedWord,
         language: w.language,
         createdAt: w.createdAt,
+        relatedForms: w.relatedForms,
         definitions: w.definitions.map(d => ({
           partOfSpeech: d.partOfSpeech,
           definition: d.definition,

@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
-import { VocabDefinition, VocabExample, VocabWord } from '../../../shared/contracts/vocab';
+import { VocabDefinition, VocabExample, VocabRelatedForm, VocabWord } from '../../../shared/contracts/vocab';
+import { WordQuizAnswer } from '../../../shared/contracts/wordQuiz';
 
 export class WordQuizRepository {
   constructor(private readonly db: Database.Database) {}
@@ -60,6 +61,21 @@ export class WordQuizRepository {
       examples: byDefinition.get(definition.id) || [{ example: definition.example, position: 1, voice: 'other' }],
       synonyms: synonymsByDefinition.get(definition.id) || []
     }));
+  }
+
+  public getRelatedForms(wordId: string): VocabRelatedForm[] {
+    return this.db.prepare(`
+      SELECT form, part_of_speech AS partOfSpeech
+      FROM vocab_related_forms WHERE word_id = ? ORDER BY position
+    `).all(wordId) as VocabRelatedForm[];
+  }
+
+  public getAnswer(wordId: string): WordQuizAnswer {
+    const definitions = this.getDefinitions(wordId);
+    return {
+      definitions,
+      relatedForms: definitions.length > 0 ? this.getRelatedForms(wordId) : []
+    };
   }
 
   public getWord(wordId: string): VocabWord | null {

@@ -43,6 +43,13 @@ describe('Word Quiz repository', () => {
         synonym TEXT NOT NULL,
         position INTEGER NOT NULL
       );
+      CREATE TABLE vocab_related_forms (
+        word_id TEXT NOT NULL REFERENCES vocab_words(id) ON DELETE CASCADE,
+        form TEXT NOT NULL,
+        part_of_speech TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        PRIMARY KEY (word_id, position)
+      );
     `);
     repository = new WordQuizRepository(db);
   });
@@ -134,5 +141,20 @@ describe('Word Quiz repository', () => {
       }
     ]);
     expect(repository.getDefinitions('missing-word')).toEqual([]);
+  });
+
+  it('returns only the revealed word’s saved related forms in order', () => {
+    addWord('word-1', 'resilient', 'Able to recover quickly.');
+    addWord('word-2', 'tenacious', 'Persistent.');
+    db.prepare(`INSERT INTO vocab_related_forms (word_id, form, part_of_speech, position) VALUES (?, ?, ?, ?)`).run('word-1', 'resilience', 'noun', 1);
+    db.prepare(`INSERT INTO vocab_related_forms (word_id, form, part_of_speech, position) VALUES (?, ?, ?, ?)`).run('word-1', 'resiliently', 'adverb', 2);
+    db.prepare(`INSERT INTO vocab_related_forms (word_id, form, part_of_speech, position) VALUES (?, ?, ?, ?)`).run('word-2', 'tenacity', 'noun', 1);
+
+    expect(repository.getAnswer('word-1').relatedForms).toEqual([
+      { form: 'resilience', partOfSpeech: 'noun' },
+      { form: 'resiliently', partOfSpeech: 'adverb' }
+    ]);
+    expect(repository.getAnswer('word-1').definitions).toHaveLength(1);
+    expect(repository.getAnswer('missing-word')).toEqual({ definitions: [], relatedForms: [] });
   });
 });

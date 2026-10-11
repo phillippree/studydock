@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Brain, Eye, EyeOff, ArrowRight, AlertCircle, BookOpen, RotateCw, Volume2 } from 'lucide-react';
-import { VocabDefinition, VocabWord } from '../../../shared/contracts/vocab';
+import { VocabDefinition, VocabRelatedForm, VocabWord } from '../../../shared/contracts/vocab';
 import { WordLibrary } from '../vocab/WordLibrary';
 import { decodeMuLawPcm } from '../vocab/pronunciationAudio';
+import { addRelatedFormToLibrary } from '../../shared/addRelatedForm';
 
 interface WordQuizPageProps {
   onNavigateHome: () => void;
@@ -11,6 +12,7 @@ interface WordQuizPageProps {
 export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
   const [word, setWord] = useState<VocabWord | null>(null);
   const [definitions, setDefinitions] = useState<VocabDefinition[]>([]);
+  const [relatedForms, setRelatedForms] = useState<VocabRelatedForm[]>([]);
   const [revealed, setRevealed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +21,9 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [pronunciationLoading, setPronunciationLoading] = useState(false);
   const [pronunciationError, setPronunciationError] = useState<string | null>(null);
+  const [relatedFormPending, setRelatedFormPending] = useState<string | null>(null);
+  const [relatedFormFeedback, setRelatedFormFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const relatedFormPendingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const pronunciationRequestRef = useRef(0);
@@ -53,6 +58,8 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
     setRefreshMessage(null);
     setRevealed(false);
     setDefinitions([]);
+    setRelatedForms([]);
+    setRelatedFormFeedback(null);
     try {
       const nextWord = await window.studydockBridge.wordQuizGetRandomWord(excludeWordId);
       activeWordIdRef.current = nextWord?.id ?? null;
@@ -110,13 +117,16 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
 
   const reveal = async () => {
     if (!word || revealed) return;
+    const wordId = word.id;
     setError(null);
     try {
-      const answer = await window.studydockBridge.wordQuizRevealDefinition(word.id);
-      setDefinitions(answer);
+      const answer = await window.studydockBridge.wordQuizRevealDefinition(wordId);
+      if (activeWordIdRef.current !== wordId) return;
+      setDefinitions(answer.definitions);
+      setRelatedForms(answer.relatedForms);
       setRevealed(true);
     } catch {
-      setError('Could not reveal this definition. It may have been removed from your library.');
+      if (activeWordIdRef.current === wordId) setError('Could not reveal this definition. It may have been removed from your library.');
     }
   };
 
@@ -131,10 +141,13 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
       if (result.status !== 'generated_gemini') {
         throw new Error(result.generationError || 'Gemini did not replace this definition. Your saved definition was kept.');
       }
+      if (activeWordIdRef.current !== refreshingWordId) return;
       setDefinitions(result.definitions);
-      setRefreshMessage('Definition and examples refreshed.');
+      setRelatedForms(result.relatedForms ?? []);
+      setRelatedFormFeedback(null);
+      setRefreshMessage('Definition, examples, and related forms refreshed.');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not refresh this definition.');
+      if (activeWordIdRef.current === refreshingWordId) setError(err instanceof Error ? err.message : 'Could not refresh this definition.');
     } finally {
       setIsRefreshing(false);
     }
@@ -147,7 +160,9 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
     setError(null);
     setRefreshMessage(null);
     setDefinitions([]);
+    setRelatedForms([]);
     setRevealed(false);
+    setRelatedFormFeedback(null);
     try {
       const selectedWord = await window.studydockBridge.wordQuizGetWord(wordId);
       if (!selectedWord) {
@@ -165,6 +180,45 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
     }
   };
 
+  const handleAddRelatedForm = async (form: string) => {
+    if (!word || relatedFormPendingRef.current || isRefreshing || loading) return;
+    const sourceWordId = word.id;
+    relatedFormPendingRef.current = true;
+    setRelatedFormPending(form);
+    setRelatedFormFeedback(null);
+
+    try {
+      const result = await addRelatedFormToLibrary(window.studydockBridge, form, word.language);
+      if (activeWordIdRef.current !== sourceWordId) return;
+      if (result.status === 'error') {
+        setRelatedFormFeedback({ type: 'error', text: result.message });
+        return;
+      }
+      stopPronunciation();
+      activeWordIdRef.current = result.details.word.id;
+      setWord(result.details.word);
+      setDefinitions(result.details.definitions);
+      setRelatedForms(result.details.relatedForms ?? []);
+      setRevealed(true);
+      setError(null);
+      setRefreshMessage(null);
+      setRelatedFormFeedback({
+        type: 'success',
+        text: result.added ? `“${form}” was added to Word Library.` : `“${form}” is already in Word Library.`
+      });
+    } catch (error: unknown) {
+      if (activeWordIdRef.current === sourceWordId) {
+        setRelatedFormFeedback({
+          type: 'error',
+          text: error instanceof Error ? `Could not add “${form}”: ${error.message}` : `Could not add “${form}”. Please try again.`
+        });
+      }
+    } finally {
+      relatedFormPendingRef.current = false;
+      setRelatedFormPending(null);
+    }
+  };
+
   return (
     <div className="quiz-page">
       <div className="quiz-heading">
@@ -172,7 +226,7 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
           <span className="quiz-icon"><Brain size={22} /></span>
           <div><h1>Word Quiz</h1><p>Think of the meaning, then reveal the answer.</p></div>
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={() => setIsLibraryOpen(true)} disabled={isRefreshing}>
+        <button className="btn btn-secondary btn-sm" onClick={() => setIsLibraryOpen(true)} disabled={isRefreshing || relatedFormPending !== null}>
           <BookOpen size={16} />Word Library
         </button>
       </div>
@@ -191,6 +245,11 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
           <div className="quiz-language">Try to recall its meaning before revealing it.</div>
           <p className="pronunciation-note">First play may use Gemini API quota. Generated audio is cached for offline replay.</p>
           {pronunciationError && <p className="pronunciation-error" role="alert">{pronunciationError}</p>}
+          {relatedFormFeedback && (
+            <p className={relatedFormFeedback.type === 'error' ? 'vocab-related-error' : 'vocab-related-success'} role={relatedFormFeedback.type === 'error' ? 'alert' : 'status'}>
+              {relatedFormFeedback.text}
+            </p>
+          )}
 
           {revealed && <div className="quiz-answer">
             {definitions.map(definition => <article className="quiz-sense" key={definition.id}>
@@ -213,15 +272,36 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
             </article>)}
           </div>}
 
+          {revealed && relatedForms.length > 0 && (
+            <section className="vocab-related-forms quiz-related-forms" aria-label="Related forms">
+              <h2>Related forms</h2>
+              <p>Click a form to add it to Word Library. New words are sent to Gemini and may use API quota.</p>
+              <div className="vocab-related-list">
+                {relatedForms.map(form => (
+                  <button
+                    className="vocab-related-item"
+                    type="button"
+                    key={`${form.form}-${form.partOfSpeech}`}
+                    onClick={() => void handleAddRelatedForm(form.form)}
+                    disabled={relatedFormPending !== null || isRefreshing}
+                    title={`Add or open ${form.form} in Word Library`}
+                  >
+                    <strong>{form.form}</strong><span>{relatedFormPending === form.form ? 'Adding…' : form.partOfSpeech}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           {error && <p className="quiz-error" role="alert"><AlertCircle size={16} />{error}</p>}
           {refreshMessage && <p className="quiz-success" role="status">{refreshMessage}</p>}
           <div className="quiz-actions">
             {!revealed && <button className="btn btn-primary" onClick={() => void reveal()}><Eye size={16} />Reveal definition</button>}
-            {revealed && <button className="btn btn-secondary" onClick={() => { setRevealed(false); setDefinitions([]); setRefreshMessage(null); }} disabled={isRefreshing}><EyeOff size={16} />Hide definition</button>}
-            {revealed && <button className="btn btn-secondary" onClick={() => void refreshDefinition()} disabled={isRefreshing}>
+            {revealed && <button className="btn btn-secondary" onClick={() => { setRevealed(false); setDefinitions([]); setRelatedForms([]); setRefreshMessage(null); setRelatedFormFeedback(null); }} disabled={isRefreshing || relatedFormPending !== null}><EyeOff size={16} />Hide definition</button>}
+            {revealed && <button className="btn btn-secondary" onClick={() => void refreshDefinition()} disabled={isRefreshing || relatedFormPending !== null}>
               <RotateCw size={16} className={isRefreshing ? 'spinner' : ''} />{isRefreshing ? 'Refreshing…' : 'Refresh definition'}
             </button>}
-            <button className="btn btn-secondary" onClick={() => void loadNext(word.id)} disabled={isRefreshing}><ArrowRight size={16} />Next word</button>
+            <button className="btn btn-secondary" onClick={() => void loadNext(word.id)} disabled={isRefreshing || relatedFormPending !== null}><ArrowRight size={16} />Next word</button>
           </div>
         </section>
       ) : (

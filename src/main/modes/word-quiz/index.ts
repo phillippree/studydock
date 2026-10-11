@@ -32,8 +32,8 @@ export function registerWordQuizMode(db: Database.Database): void {
     if (event.senderFrame !== event.sender.mainFrame || typeof wordId !== 'string' || wordId.length === 0 || wordId.length > 200) {
       throw new Error('Invalid Word Quiz word ID');
     }
-    const definitions = repository.getDefinitions(wordId);
-    if (!definitions.length) throw new Error('This word no longer has a saved definition.');
-    return definitions;
+    const answer = repository.getAnswer(wordId);
+    if (!answer.definitions.length) throw new Error('This word no longer has a saved definition.');
+    return answer;
   });
 }

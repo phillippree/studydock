@@ -5,6 +5,9 @@ Notable StudyDock changes are recorded here. Entries are grouped by the app's re
 ## [Unreleased]
 
 ### Added
+- Clicking a related form on a Vocabulary card now adds the verified word to Word Library and opens its card, or opens it directly when already saved.
+- Vocabulary cards now show saved related word forms, such as tenacious → tenacity (noun), after lookup or refresh.
+- Vocabulary lookups and definition refreshes now request all common meanings across the word's supported parts of speech.
 - Added cached audio pronunciation playback to Word Quiz cards.
 - The macOS DMG build script creates a draft GitHub Release when needed and attaches the generated disk image.
 - Added a sentence refresh button to the revealed answer in Idioms & Phrases practice.
@@ -18,6 +21,7 @@ Notable StudyDock changes are recorded here. Entries are grouped by the app's re
 - Phrase is now the default type in the Idioms & Phrases lookup form.
 
 ### Fixed
+- Word Quiz now shows saved related forms, including resilience for resilient, after revealing or refreshing a definition.
 - Connector lookups now accept an empty Gemini suggestion when no spelling correction is needed.
 - Connector lookups now handle null meanings and convert Gemini's explanatory alternatives into selectable suggestions.
 - Idiom and phrase lookups now surface clean grammatical corrections and let you use the suggested expression.

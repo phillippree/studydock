@@ -21,7 +21,7 @@ const api: StudyDockAPI = {
   // Vocabulary Operations
   vocabGetRandomWord: (options) => ipcRenderer.invoke('vocab:getRandomWord', options),
   vocabFetchDefinition: (wordId, forceRefresh) => ipcRenderer.invoke('vocab:fetchDefinition', { wordId, forceRefresh }),
-  vocabSaveDefinitionRetry: (wordId, senses) => ipcRenderer.invoke('vocab:saveDefinitionRetry', { wordId, senses }),
+  vocabSaveDefinitionRetry: (wordId, senses, relatedForms) => ipcRenderer.invoke('vocab:saveDefinitionRetry', { wordId, senses, relatedForms }),
   vocabGetAllWords: () => ipcRenderer.invoke('vocab:getAllWords'),
   vocabGetWordDetails: (wordId) => ipcRenderer.invoke('vocab:getWordDetails', wordId),
   vocabAddWord: (input) => ipcRenderer.invoke('vocab:addWord', input),

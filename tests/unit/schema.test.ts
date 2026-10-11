@@ -37,6 +37,80 @@ describe('Gemini Vocabulary Response Validation', () => {
     expect(validated.senses[0].synonyms).toEqual(['intelligible', 'clear']);
   });
 
+  it('preserves distinct senses across all returned parts of speech', () => {
+    const raw = {
+      word: 'light',
+      language: 'en',
+      recognized: true,
+      senses: [
+        {
+          partOfSpeech: 'noun',
+          definition: 'The natural agent that makes things visible.',
+          synonyms: ['illumination'],
+          examples: examples('Light as a noun')
+        },
+        {
+          partOfSpeech: 'verb',
+          definition: 'To set fire to or ignite something.',
+          synonyms: ['ignite'],
+          examples: examples('Light as a verb')
+        },
+        {
+          partOfSpeech: 'adjective',
+          definition: 'Having little weight.',
+          synonyms: ['lightweight'],
+          examples: examples('Light as an adjective')
+        }
+      ]
+    };
+
+    const validated = validateAndNormalizeVocabResponse(raw, 'light', 'en');
+    expect(validated.senses.map(sense => sense.partOfSpeech)).toEqual(['noun', 'verb', 'adjective']);
+    expect(validated.senses).toHaveLength(3);
+  });
+
+  it('keeps related derived words separate from the requested word senses', () => {
+    const validated = validateAndNormalizeVocabResponse({
+      word: 'tenacious', language: 'en', recognized: true,
+      senses: [{ partOfSpeech: 'adjective', definition: 'Holding firm to a course of action.', examples: examples('Tenacious') }],
+      relatedForms: [
+        { form: 'tenacity', partOfSpeech: 'noun' },
+        { form: 'tenaciously', partOfSpeech: 'adverb' },
+        { form: 'TENACITY', partOfSpeech: 'noun' },
+        { form: 'tenacious', partOfSpeech: 'adjective' }
+      ]
+    }, 'tenacious', 'en');
+
+    expect(validated.senses).toHaveLength(1);
+    expect(validated.relatedForms).toEqual([
+      { form: 'tenacity', partOfSpeech: 'noun' },
+      { form: 'tenaciously', partOfSpeech: 'adverb' }
+    ]);
+  });
+
+  it('accepts a null related-forms list when Gemini finds no derived words', () => {
+    const validated = validateAndNormalizeVocabResponse({
+      word: 'lucid', language: 'en', recognized: true, relatedForms: null,
+      senses: [{ partOfSpeech: 'adjective', definition: 'Clear and easy to understand.', examples: examples('Lucid') }]
+    }, 'lucid', 'en');
+    expect(validated.relatedForms).toEqual([]);
+  });
+
+  it('rejects more than twelve senses', () => {
+    const raw = {
+      word: 'light',
+      language: 'en',
+      recognized: true,
+      senses: Array.from({ length: 13 }, (_, index) => ({
+        partOfSpeech: 'noun',
+        definition: `A distinct meaning of light number ${index}.`,
+        examples: examples(`Light ${index}`)
+      }))
+    };
+
+    expect(() => validateAndNormalizeVocabResponse(raw, 'light', 'en')).toThrow(/more than twelve senses/);
+  });
+
   it('validates and handles an unrecognized word', () => {
     const raw = {
       word: 'asdfghjklqwerty',

@@ -1,4 +1,4 @@
-import { VocabDefinition, VocabWord } from './vocab';
+import { VocabDefinition, VocabRelatedForm, VocabWord } from './vocab';
 
 export interface WordQuizCard {
   word: VocabWord;
@@ -6,4 +6,5 @@ export interface WordQuizCard {
 
 export interface WordQuizAnswer {
   definitions: VocabDefinition[];
+  relatedForms: VocabRelatedForm[];
 }

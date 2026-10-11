@@ -405,6 +405,21 @@ html, body, #root {
 .vocab-synonym-list { display: flex; flex-wrap: wrap; gap: 7px; }
 .vocab-synonym-chip { display: inline-flex; padding: 3px 9px; border-radius: 999px; background: var(--bg-card); border: 1px solid var(--border-default); color: var(--text-primary); font-size: .82rem; }
 .vocab-synonyms-empty { color: var(--text-dim); font-size: .8rem; }
+.vocab-related-forms { margin: 0 0 28px; padding: 18px 20px; background: var(--bg-tertiary); border-radius: var(--radius-md); }
+.vocab-related-forms h2 { color: var(--accent-primary); font-size: .86rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 8px; }
+.vocab-related-forms > p { color: var(--text-secondary); font-size: .82rem; margin-bottom: 12px; }
+.vocab-related-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.vocab-related-item { display: inline-flex; align-items: baseline; gap: 7px; padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.vocab-related-item { cursor: pointer; font: inherit; text-align: left; }
+.vocab-related-item:hover:not(:disabled) { border-color: var(--accent-primary); background: var(--bg-card-hover); }
+.vocab-related-item:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.vocab-related-item:disabled { cursor: wait; opacity: .65; }
+.vocab-related-item strong { color: var(--text-primary); font-weight: 600; }
+.vocab-related-item span { color: var(--text-secondary); font-size: .8rem; }
+.vocab-related-success, .vocab-related-error { margin-top: 10px; font-size: .85rem; }
+.vocab-related-success { color: var(--success-text); }
+.vocab-related-error { color: var(--error-text); }
+.quiz-card .quiz-related-forms { width: min(560px, 100%); margin: 16px auto 0; text-align: left; }
 .quiz-sense + .quiz-sense { border-top: 1px solid var(--border-default); margin-top: 16px; padding-top: 16px; }
 .quiz-pos { color: var(--accent-primary); font-size: .82rem; font-weight: 600; text-transform: capitalize; }
 .quiz-sense p { margin-top: 7px; }

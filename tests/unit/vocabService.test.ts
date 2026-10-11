@@ -84,6 +84,97 @@ describe('Vocabulary Service Logic and Resilience', () => {
     expect(inDb[0].synonyms).toEqual(['indescribable', 'inexpressible']);
   });
 
+  it('saves every returned part of speech so Word Quiz can reveal them together', async () => {
+    const word = await service.addWord({ word: 'light' });
+    vi.spyOn(mockGemini, 'generateStructured').mockResolvedValueOnce({
+      word: 'light',
+      language: 'en',
+      recognized: true,
+      relatedForms: [{ form: 'lightness', partOfSpeech: 'noun' }],
+      senses: [
+        {
+          partOfSpeech: 'noun',
+          definition: 'The natural agent that makes things visible.',
+          synonyms: ['illumination'],
+          examples: Array.from({ length: 6 }, (_, index) => ({
+            example: `Light from the window filled the room, example ${index + 1}.`,
+            voice: 'active'
+          }))
+        },
+        {
+          partOfSpeech: 'verb',
+          definition: 'To set fire to or ignite something.',
+          synonyms: ['ignite'],
+          examples: Array.from({ length: 6 }, (_, index) => ({
+            example: `They light the lantern before sunset, example ${index + 1}.`,
+            voice: 'active'
+          }))
+        },
+        {
+          partOfSpeech: 'adjective',
+          definition: 'Having little weight.',
+          synonyms: ['lightweight'],
+          examples: Array.from({ length: 6 }, (_, index) => ({
+            example: `She packed a light jacket for the trip, example ${index + 1}.`,
+            voice: 'active'
+          }))
+        }
+      ]
+    });
+
+    const refreshed = await service.fetchDefinition(word.word.id, true);
+    const revealed = await service.getWordDetails(word.word.id);
+
+    expect(refreshed.definitions.map(definition => definition.partOfSpeech)).toEqual(['noun', 'verb', 'adjective']);
+    expect(revealed?.definitions.map(definition => definition.partOfSpeech)).toEqual(['noun', 'verb', 'adjective']);
+    expect(revealed?.relatedForms).toEqual([{ form: 'lightness', partOfSpeech: 'noun' }]);
+  });
+
+  it('saves related forms for a verified new word and replaces them on refresh', async () => {
+    const seededWord = repo.findWordByNormalized('tenacious', 'en');
+    if (seededWord) repo.deleteWord(seededWord.id);
+    const senses = [{
+      partOfSpeech: 'adjective',
+      definition: 'Persistent and determined.',
+      synonyms: ['persistent'],
+      examples: Array.from({ length: 6 }, (_, index) => ({
+        example: `The tenacious learner continued studying, example ${index + 1}.`,
+        voice: 'active' as const
+      }))
+    }];
+    vi.spyOn(mockGemini, 'generateStructured')
+      .mockResolvedValueOnce({ word: 'tenacious', language: 'en', recognized: true, senses,
+        relatedForms: [{ form: 'tenacity', partOfSpeech: 'noun' }] })
+      .mockResolvedValueOnce({ word: 'tenacious', language: 'en', recognized: true, senses,
+        relatedForms: [{ form: 'tenacity', partOfSpeech: 'noun' }, { form: 'tenaciously', partOfSpeech: 'adverb' }] });
+
+    const added = await service.verifyAndAddWord({ word: 'tenacious' });
+    expect(added.status).toBe('added');
+    if (added.status !== 'added') throw new Error('Expected a new word.');
+    expect((await service.getWordDetails(added.word.id))?.relatedForms).toEqual([{ form: 'tenacity', partOfSpeech: 'noun' }]);
+
+    const refreshed = await service.fetchDefinition(added.word.id, true);
+    expect(refreshed.relatedForms).toEqual([
+      { form: 'tenacity', partOfSpeech: 'noun' },
+      { form: 'tenaciously', partOfSpeech: 'adverb' }
+    ]);
+    expect(repo.getRelatedFormsForWord(added.word.id)).toEqual(refreshed.relatedForms);
+    expect((await service.exportData()).words.find(item => item.normalizedWord === 'tenacious')?.relatedForms).toEqual(refreshed.relatedForms);
+  });
+
+  it('preserves saved related forms when a refresh fails', async () => {
+    const word = await service.addWord({ word: 'tenacious' });
+    repo.replaceDefinitions(word.word.id, [{
+      partOfSpeech: 'adjective', definition: 'Firmly persistent.', example: 'She is tenacious.', source: 'manual'
+    }], [{ form: 'tenacity', partOfSpeech: 'noun' }]);
+    vi.spyOn(mockGemini, 'generateStructured').mockRejectedValueOnce(new Error('Gemini unavailable'));
+
+    const result = await service.fetchDefinition(word.word.id, true);
+
+    expect(result.relatedForms).toEqual([{ form: 'tenacity', partOfSpeech: 'noun' }]);
+    expect(repo.getRelatedFormsForWord(word.word.id)).toEqual(result.relatedForms);
+  });
+
   it('preserves existing definitions when a refresh request fails', async () => {
     const word = repo.findWordByNormalized('lucid', 'en')!;
     const originalDefs = repo.getDefinitionsForWord(word.id);

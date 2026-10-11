@@ -87,7 +87,7 @@ StudyDock application data/
       vocab/
 ```
 
-- **Database (`database/studydock.sqlite`):** Words, definitions, and migration history managed with SQLite WAL mode and foreign-key enforcement.
+- **Database (`database/studydock.sqlite`):** Words, definitions, related word forms, and migration history managed with SQLite WAL mode and foreign-key enforcement. New lookups and refreshes can save related forms such as *tenacious* → *tenacity* (noun); existing cards gain them after a refresh.
 - **Settings (`settings/preferences.json`):** Application preferences such as the selected Gemini model (`gemini-2.5-flash`, `gemini-2.0-flash`, etc.).
 - **Secrets (`secrets/gemini-key.enc`):** Gemini API key encrypted using Electron's OS-backed `safeStorage` (Keychain on macOS, DPAPI on Windows, Secret Service on Linux). If OS encryption is unavailable, keys are kept in session memory only and never written unencrypted to disk.
 - **Logs (`logs/studydock.log`):** Main-process Gemini diagnostics and startup errors are written here with timestamps and also remain visible in the terminal during development. API keys are redacted. Log files rotate at 2 MB, retaining up to four older files alongside the current log.

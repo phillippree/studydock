@@ -31,7 +31,11 @@ export const geminiVocabRawSchema = z.object({
   word: z.string().trim().min(1, 'Word cannot be empty'),
   language: z.string().trim().default('en'),
   recognized: z.boolean(),
-  senses: z.array(senseSchema),
+  senses: z.array(senseSchema).max(12, 'A word response cannot contain more than twelve senses'),
+  relatedForms: z.array(z.object({
+    form: z.string().trim().min(1).max(100),
+    partOfSpeech: z.enum(ALLOWED_PARTS_OF_SPEECH)
+  })).max(8).nullish().transform(forms => forms ?? []),
   suggestions: z.array(z.string().trim().min(1).max(100)).max(5).default([])
 });
 
@@ -48,6 +52,13 @@ export function validateAndNormalizeVocabResponse(
     .map(candidate => candidate.trim())
     .filter(candidate => candidate && normalizeWord(candidate) !== expected)
     .filter(candidate => candidate.length <= 100))].slice(0, 5);
+  const seenForms = new Set<string>();
+  const relatedForms = parsed.relatedForms.filter(item => {
+    const normalized = normalizeWord(item.form);
+    if (normalized === expected || seenForms.has(normalized)) return false;
+    seenForms.add(normalized);
+    return true;
+  });
 
   // A canonical spelling different from the submitted spelling should be offered for confirmation,
   // never silently saved under the user's original input.
@@ -93,7 +104,8 @@ export function validateAndNormalizeVocabResponse(
     word: parsed.word,
     language: parsed.language || expectedLanguage,
     recognized: true,
-    senses: parsed.senses as GeminiVocabResponse['senses']
+    senses: parsed.senses as GeminiVocabResponse['senses'],
+    relatedForms
   };
 }
 

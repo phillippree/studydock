@@ -16,6 +16,7 @@ import {
 import { VocabWordWithDefinitions } from '../../../shared/contracts/vocab';
 import { WordLibrary } from './WordLibrary';
 import { decodeMuLawPcm } from './pronunciationAudio';
+import { addRelatedFormToLibrary } from '../../shared/addRelatedForm';
 
 interface VocabPageProps {
   onNavigateHome: () => void;
@@ -30,6 +31,9 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pronunciationLoading, setPronunciationLoading] = useState(false);
   const [pronunciationError, setPronunciationError] = useState<string | null>(null);
+  const [relatedFormPending, setRelatedFormPending] = useState<string | null>(null);
+  const [relatedFormFeedback, setRelatedFormFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const relatedFormPendingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const pronunciationRequestRef = useRef(0);
@@ -103,6 +107,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
     stopPronunciation();
     setIsLoading(true);
     setErrorMessage(null);
+    setRelatedFormFeedback(null);
     try {
       const excludeId = excludeCurrent && currentWordState ? currentWordState.word.id : undefined;
       const result = await window.studydockBridge.vocabGetRandomWord({ excludeWordId: excludeId });
@@ -183,7 +188,8 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
           examples: d.examples,
           synonyms: d.synonyms,
           source: d.source
-        }))
+        })),
+        currentWordState.relatedForms ?? []
       );
       if (activeWordIdRef.current === currentWordState.word.id) {
         setCurrentWordState(result);
@@ -199,6 +205,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
     stopPronunciation();
     setIsLoading(true);
     setErrorMessage(null);
+    setRelatedFormFeedback(null);
     activeWordIdRef.current = wordId;
     try {
       const result = await window.studydockBridge.vocabFetchDefinition(wordId, false);
@@ -210,6 +217,46 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
       setErrorMessage(msg);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAddRelatedForm = async (form: string) => {
+    if (!currentWordState || relatedFormPendingRef.current || isRefreshing || isLoading) return;
+    const sourceWordId = currentWordState.word.id;
+    relatedFormPendingRef.current = true;
+    setRelatedFormPending(form);
+    setRelatedFormFeedback(null);
+
+    try {
+      const result = await addRelatedFormToLibrary(
+        window.studydockBridge,
+        form,
+        currentWordState.word.language
+      );
+      if (activeWordIdRef.current !== sourceWordId) return;
+      if (result.status === 'error') {
+        setRelatedFormFeedback({ type: 'error', text: result.message });
+        return;
+      }
+
+      stopPronunciation();
+      activeWordIdRef.current = result.details.word.id;
+      setCurrentWordState(result.details);
+      setErrorMessage(null);
+      setRelatedFormFeedback({
+        type: 'success',
+        text: result.added ? `“${form}” was added to Word Library.` : `“${form}” is already in Word Library.`
+      });
+    } catch (error: unknown) {
+      if (activeWordIdRef.current === sourceWordId) {
+        setRelatedFormFeedback({
+          type: 'error',
+          text: error instanceof Error ? `Could not add “${form}”: ${error.message}` : `Could not add “${form}”. Please try again.`
+        });
+      }
+    } finally {
+      relatedFormPendingRef.current = false;
+      setRelatedFormPending(null);
     }
   };
 
@@ -348,6 +395,11 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
               </div>
               <p className="pronunciation-note">First play sends this word to Gemini and may use API quota. Generated audio is saved for offline replay.</p>
               {pronunciationError && <p className="pronunciation-error" role="alert">{pronunciationError}</p>}
+              {relatedFormFeedback && (
+                <p className={relatedFormFeedback.type === 'error' ? 'vocab-related-error' : 'vocab-related-success'} role={relatedFormFeedback.type === 'error' ? 'alert' : 'status'}>
+                  {relatedFormFeedback.text}
+                </p>
+              )}
             </div>
 
             {/* Senses / Definitions */}
@@ -415,6 +467,27 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
                   </button>
                 )}
               </div>
+            )}
+
+            {(currentWordState.relatedForms?.length ?? 0) > 0 && (
+              <section className="vocab-related-forms" aria-label="Related forms">
+                <h2>Related forms</h2>
+                <p>Click a form to add it to Word Library. New words are sent to Gemini and may use API quota.</p>
+                <div className="vocab-related-list">
+                  {currentWordState.relatedForms?.map(form => (
+                    <button
+                      className="vocab-related-item"
+                      type="button"
+                      key={`${form.form}-${form.partOfSpeech}`}
+                      onClick={() => void handleAddRelatedForm(form.form)}
+                      disabled={relatedFormPending !== null || isRefreshing || isLoading}
+                      title={`Add or open ${form.form} in Word Library`}
+                    >
+                      <strong>{form.form}</strong><span>{relatedFormPending === form.form ? 'Adding…' : form.partOfSpeech}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
             )}
 
             {/* Not Saved Retry Action Banner */}

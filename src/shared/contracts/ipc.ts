@@ -9,6 +9,7 @@ import {
   ImportWordsResult,
   VocabDefinition,
   VocabPronunciationAudio,
+  VocabRelatedForm,
   VocabWord,
   VocabWordWithDefinitions,
   VerifyAndAddWordResult
@@ -39,7 +40,7 @@ export interface StudyDockAPI {
   // Vocabulary Mode Operations
   vocabGetRandomWord(options?: { excludeWordId?: string }): Promise<VocabWordWithDefinitions | null>;
   vocabFetchDefinition(wordId: string, forceRefresh?: boolean): Promise<VocabWordWithDefinitions>;
-  vocabSaveDefinitionRetry(wordId: string, senses: Array<{ partOfSpeech: string; definition: string; example: string; examples?: VocabDefinition['examples']; synonyms?: string[]; source?: string }>): Promise<VocabWordWithDefinitions>;
+  vocabSaveDefinitionRetry(wordId: string, senses: Array<{ partOfSpeech: string; definition: string; example: string; examples?: VocabDefinition['examples']; synonyms?: string[]; source?: string }>, relatedForms?: VocabRelatedForm[]): Promise<VocabWordWithDefinitions>;
   vocabGetAllWords(): Promise<Array<VocabWord & { definitionCount: number }>>;
   vocabGetWordDetails(wordId: string): Promise<VocabWordWithDefinitions | null>;
   vocabAddWord(input: AddWordInput): Promise<{ word: VocabWord; isDuplicate: boolean }>;
@@ -56,7 +57,7 @@ export interface StudyDockAPI {
   // Word Quiz mode
   wordQuizGetRandomWord(excludeWordId?: string): Promise<VocabWord | null>;
   wordQuizGetWord(wordId: string): Promise<VocabWord | null>;
-  wordQuizRevealDefinition(wordId: string): Promise<WordQuizAnswer['definitions']>;
+  wordQuizRevealDefinition(wordId: string): Promise<WordQuizAnswer>;
 
   // Idioms & Phrases mode
   idiomsPhrasesList(query?: IdiomPhraseListQuery): Promise<IdiomPhraseListPage>;
