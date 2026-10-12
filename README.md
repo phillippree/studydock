@@ -356,4 +356,4 @@ New installations default to `gemini-3.5-flash-lite`. Existing model preferences
 
 ## Compact Gemini settings
 
-When a key is configured, the landing page initially shows a compact Gemini summary with the selected model and key storage status. **Edit settings** expands all existing controls; **Hide settings** collapses them. First-time setup and removing a saved key show the controls automatically. Key configured does not imply that a live connection test has succeeded.
+Open **Settings** from Home to manage Gemini and open the local Logs, Audio Cache, or Data Folder in Finder. When a key is configured, Settings initially shows a compact Gemini summary with the selected model and key storage status. **Edit settings** expands all existing controls; **Hide settings** collapses them. First-time setup and removing a saved key show the controls automatically. Key configured does not imply that a live connection test has succeeded.

@@ -184,8 +184,19 @@ function registerSettingsHandlers(db: ReturnType<typeof getDatabase>): void {
     return settingsService.setModel(model.trim());
   });
 
-  ipcMain.handle('settings:openStorageFolder', async () => {
+  ipcMain.handle('settings:openStorageFolder', async (event) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error('Unauthorized storage folder access');
     return settingsService.openStorageFolder();
+  });
+
+  ipcMain.handle('settings:openLogsFolder', async (event) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error('Unauthorized logs folder access');
+    return settingsService.openLogsFolder();
+  });
+
+  ipcMain.handle('settings:openAudioCacheFolder', async (event) => {
+    if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error('Unauthorized audio cache folder access');
+    return settingsService.openAudioCacheFolder();
   });
 
   ipcMain.handle('modes:getModes', async () => {

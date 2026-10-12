@@ -17,6 +17,8 @@ const api: StudyDockAPI = {
   listModels: (apiKey) => ipcRenderer.invoke('settings:listModels', { apiKey }),
   setModel: (model) => ipcRenderer.invoke('settings:setModel', model),
   openStorageFolder: () => ipcRenderer.invoke('settings:openStorageFolder'),
+  openLogsFolder: () => ipcRenderer.invoke('settings:openLogsFolder'),
+  openAudioCacheFolder: () => ipcRenderer.invoke('settings:openAudioCacheFolder'),
   exportLibraryList: () => ipcRenderer.invoke('library:exportList'),
   importLibraryList: () => ipcRenderer.invoke('library:importList'),
 

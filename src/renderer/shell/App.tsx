@@ -9,6 +9,7 @@ import { UpdateCheckResult } from '../../shared/contracts/updates';
 
 export const App: React.FC = () => {
   const [currentModeId, setCurrentModeId] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<UpdateCheckResult['status']>('unavailable');
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const [updateLinkError, setUpdateLinkError] = useState(false);
@@ -46,7 +47,7 @@ export const App: React.FC = () => {
           <button
             type="button"
             className="brand-title"
-            onClick={() => setCurrentModeId(null)}
+            onClick={() => { setCurrentModeId(null); setShowSettings(false); }}
             title="StudyDock Home"
           >
             <Compass className="brand-icon" />
@@ -57,7 +58,7 @@ export const App: React.FC = () => {
         <nav className="app-header-nav">
           <ModePicker
             currentModeId={currentModeId}
-            onSelectMode={(modeId) => setCurrentModeId(modeId)}
+            onSelectMode={(modeId) => { setCurrentModeId(modeId); setShowSettings(false); }}
           />
         </nav>
       </header>
@@ -65,7 +66,12 @@ export const App: React.FC = () => {
       {/* Main Content Body */}
       <main className="app-main">
         {currentModeId === null || !ModeComponent ? (
-          <LandingPage onOpenMode={(modeId) => setCurrentModeId(modeId)} />
+          <LandingPage
+            view={showSettings ? 'settings' : 'home'}
+            onOpenSettings={() => setShowSettings(true)}
+            onBackHome={() => setShowSettings(false)}
+            onOpenMode={(modeId) => { setCurrentModeId(modeId); setShowSettings(false); }}
+          />
         ) : (
           <ErrorBoundary
             key={currentModeId}

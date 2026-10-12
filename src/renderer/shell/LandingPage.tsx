@@ -19,15 +19,20 @@ import {
   Cpu,
   Laugh,
   Download,
-  Upload
+  Upload,
+  Settings as SettingsIcon,
+  ArrowLeft
 } from 'lucide-react';
 import { AvailableModel, DEFAULT_GEMINI_MODEL, GeminiSettings, SUPPORTED_GEMINI_MODELS, TestConnectionResult } from '../../shared/contracts/settings';
 
 interface LandingPageProps {
   onOpenMode: (modeId: string) => void;
+  view: 'home' | 'settings';
+  onOpenSettings: () => void;
+  onBackHome: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode, view, onOpenSettings, onBackHome }) => {
   const modes = getAllRegisteredModes();
   const [settingsExpanded, setSettingsExpanded] = useState(true);
   const settingsInitialized = useRef(false);
@@ -41,6 +46,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [transferBusy, setTransferBusy] = useState(false);
   const [transferMessage, setTransferMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [folderError, setFolderError] = useState<string | null>(null);
 
   const [modelOptions, setModelOptions] = useState<AvailableModel[]>(SUPPORTED_GEMINI_MODELS);
 
@@ -159,9 +165,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
 
   const handleOpenStorageFolder = async () => {
     try {
-      await window.studydockBridge.openStorageFolder();
-    } catch (err) {
-      console.error('Failed to open storage folder:', err);
+      setFolderError(null);
+      const result = await window.studydockBridge.openStorageFolder();
+      if (!result.success) setFolderError('Could not open the data folder.');
+    } catch (error: unknown) {
+      setFolderError(error instanceof Error ? error.message : 'Could not open the data folder.');
+    }
+  };
+
+  const handleOpenFolder = async (folder: 'logs' | 'audio') => {
+    setFolderError(null);
+    try {
+      const result = folder === 'logs'
+        ? await window.studydockBridge.openLogsFolder()
+        : await window.studydockBridge.openAudioCacheFolder();
+      if (!result.success) setFolderError(`Could not open the ${folder === 'logs' ? 'logs' : 'audio cache'} folder.`);
+    } catch (error: unknown) {
+      setFolderError(error instanceof Error ? error.message : 'Could not open the folder.');
     }
   };
 
@@ -196,6 +216,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
 
   return (
     <div style={{ maxWidth: '900px', margin: '0', padding: '40px 24px' }}>
+      {view === 'home' ? <>
       {/* Hero Welcome */}
       <div style={{ textAlign: 'left', marginBottom: '28px' }}>
         <h1 style={{ fontSize: '1.9rem', fontWeight: 500, letterSpacing: '-0.03em', marginBottom: '8px' }}>
@@ -204,6 +225,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
         <p style={{ fontSize: '1.05rem', color: 'var(--text-secondary)', maxWidth: '540px', margin: '0' }}>
           Choose a mode to get started.
         </p>
+        <button type="button" className="btn btn-secondary" onClick={onOpenSettings} style={{ marginTop: '18px' }}><SettingsIcon size={17} />Settings</button>
       </div>
 
       {/* Mode Selection Cards */}
@@ -276,6 +298,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
         </div>
         <p style={{ color: 'var(--text-dim)', fontSize: '0.83rem', marginTop: '12px' }}>Import keeps your current library, skips duplicates, and makes no Gemini requests. You can look up missing details later.</p>
         {transferMessage && <p role={transferMessage.type === 'error' ? 'alert' : 'status'} style={{ color: transferMessage.type === 'error' ? 'var(--error-text)' : 'var(--success-text)', marginTop: '12px' }}>{transferMessage.text}</p>}
+      </section>
+
+      </> : <>
+      <div style={{ marginBottom: '24px' }}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onBackHome}><ArrowLeft size={16} />Back to Home</button>
+        <h1 style={{ fontSize: '1.9rem', fontWeight: 500, marginTop: '12px' }}>Settings</h1>
+        <p style={{ color: 'var(--text-secondary)' }}>Manage your Gemini connection and open StudyDock’s local files.</p>
+      </div>
+      <section className="card" aria-labelledby="files-title" style={{ marginBottom: '24px' }}>
+        <h2 id="files-title" style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Files & storage</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Open these folders in Finder. This does not remove any files.</p>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-secondary" onClick={() => void handleOpenFolder('logs')}><FolderOpen size={17} />Open Logs</button>
+          <button type="button" className="btn btn-secondary" onClick={() => void handleOpenFolder('audio')}><FolderOpen size={17} />Open Audio Cache</button>
+          <button type="button" className="btn btn-secondary" onClick={() => void handleOpenStorageFolder()}><FolderOpen size={17} />Open Data Folder</button>
+        </div>
+        {folderError && <p role="alert" style={{ color: 'var(--error-text)', marginTop: '12px' }}>{folderError}</p>}
       </section>
 
       {/* Gemini Connection & Settings Section */}
@@ -432,16 +471,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
             </button>
           )}
 
-          <div style={{ marginLeft: 'auto' }}>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={handleOpenStorageFolder}
-              title="Reveal application database and settings in Finder / File Explorer"
-            >
-              <FolderOpen size={16} />
-              Open Data Folder
-            </button>
-          </div>
         </div>
 
         {/* Message Banner */}
@@ -487,6 +516,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
         )}
         </div>
       </div>
+      </>}
     </div>
   );
 };

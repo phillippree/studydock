@@ -76,7 +76,22 @@ export class SettingsService {
     const root = storagePaths.getRoot();
     storagePaths.ensureDirectories();
     const result = await shell.openPath(root);
-    return { success: result === '' };
+    if (result) throw new Error(`Could not open the data folder: ${result}`);
+    return { success: true };
+  }
+
+  public async openLogsFolder(): Promise<{ success: boolean }> {
+    storagePaths.ensureDirectories();
+    const result = await shell.openPath(storagePaths.getLogsDir());
+    if (result) throw new Error(`Could not open the logs folder: ${result}`);
+    return { success: true };
+  }
+
+  public async openAudioCacheFolder(): Promise<{ success: boolean }> {
+    storagePaths.ensureDirectories();
+    const result = await shell.openPath(storagePaths.getVocabPronunciationDir());
+    if (result) throw new Error(`Could not open the audio cache folder: ${result}`);
+    return { success: true };
   }
 }
 

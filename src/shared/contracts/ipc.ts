@@ -39,6 +39,8 @@ export interface StudyDockAPI {
   listModels(apiKey?: string): Promise<ListModelsResult>;
   setModel(model: string): Promise<{ success: boolean }>;
   openStorageFolder(): Promise<{ success: boolean }>;
+  openLogsFolder(): Promise<{ success: boolean }>;
+  openAudioCacheFolder(): Promise<{ success: boolean }>;
   exportLibraryList(): Promise<{ canceled: boolean; path?: string; counts?: LibraryTransferCounts }>;
   importLibraryList(): Promise<{ canceled: boolean; result?: LibraryImportResult }>;
 
