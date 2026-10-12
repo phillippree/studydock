@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { randomUUID } from 'node:crypto';
 import { JokeEntry, JokeExample, JokeExampleVoice, JokeListPage, JokeListQuery, JokeType } from '../../../shared/contracts/jokes';
 
 type JokeRow = Omit<JokeEntry, 'examples'>;
@@ -55,6 +56,18 @@ export class JokesRepository {
     });
     saveTransaction();
     return this.getById(id)!;
+  }
+
+  public fillMissingDetails(id: string, explanation: string, examples: Array<{ example: string; voice: JokeExampleVoice }>): JokeEntry | null {
+    const filled = this.db.transaction(() => {
+      const result = this.db.prepare("UPDATE jokes_entries SET explanation = ?, updated_at = ? WHERE id = ? AND explanation = ''")
+        .run(explanation, new Date().toISOString(), id);
+      if (!result.changes) return false;
+      const insert = this.db.prepare('INSERT INTO jokes_examples (id, entry_id, example, voice, position) VALUES (?, ?, ?, ?, ?)');
+      examples.forEach((item, index) => insert.run(`example_${randomUUID()}`, id, item.example, item.voice, index + 1));
+      return true;
+    });
+    return filled() ? this.getById(id) : null;
   }
 
   private getExamples(entryIds: string[]): Array<JokeExample & { entryId: string }> {

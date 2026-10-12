@@ -5,6 +5,7 @@ Notable StudyDock changes are recorded here. Entries are grouped by the app's re
 ## [Unreleased]
 
 ### Added
+- Export or import a small library list containing saved words, idioms and phrases, connectors, and jokes. Imports skip duplicates and keep generated details out of the file; missing details can be fetched individually later.
 - Clicking a related form on a Vocabulary card now adds the verified word to Word Library and opens its card, or opens it directly when already saved.
 - Vocabulary cards now show saved related word forms, such as tenacious → tenacity (noun), after lookup or refresh.
 - Vocabulary lookups and definition refreshes now request all common meanings across the word's supported parts of speech.

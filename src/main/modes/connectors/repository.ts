@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { randomUUID } from 'node:crypto';
 import { ConnectorCategory, ConnectorEntry, ConnectorExample, ConnectorListPage, ConnectorListQuery, ConnectorVoice } from '../../../shared/contracts/connectors';
 
 export class ConnectorsRepository {
@@ -67,6 +68,18 @@ export class ConnectorsRepository {
       return true;
     });
     return replace() ? this.getById(id) : null;
+  }
+
+  public fillMissingDetails(id: string, meaning: string, examples: Array<{ example: string; voice: ConnectorVoice }>): ConnectorEntry | null {
+    const filled = this.db.transaction(() => {
+      const result = this.db.prepare("UPDATE connectors_entries SET meaning = ?, updated_at = ? WHERE id = ? AND meaning = ''")
+        .run(meaning, new Date().toISOString(), id);
+      if (!result.changes) return false;
+      const insert = this.db.prepare('INSERT INTO connectors_examples (id, entry_id, example, position, voice) VALUES (?, ?, ?, ?, ?)');
+      examples.forEach((item, index) => insert.run(`example_${randomUUID()}`, id, item.example, index + 1, item.voice));
+      return true;
+    });
+    return filled() ? this.getById(id) : null;
   }
 
   private getExamples(id: string): ConnectorExample[] {

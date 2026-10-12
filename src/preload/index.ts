@@ -17,6 +17,8 @@ const api: StudyDockAPI = {
   listModels: (apiKey) => ipcRenderer.invoke('settings:listModels', { apiKey }),
   setModel: (model) => ipcRenderer.invoke('settings:setModel', model),
   openStorageFolder: () => ipcRenderer.invoke('settings:openStorageFolder'),
+  exportLibraryList: () => ipcRenderer.invoke('library:exportList'),
+  importLibraryList: () => ipcRenderer.invoke('library:importList'),
 
   // Vocabulary Operations
   vocabGetRandomWord: (options) => ipcRenderer.invoke('vocab:getRandomWord', options),
@@ -56,7 +58,8 @@ const api: StudyDockAPI = {
   jokesList: (query) => ipcRenderer.invoke('jokes:list', query),
   jokesLookup: (input) => ipcRenderer.invoke('jokes:lookup', input),
   jokesSavePreview: (token) => ipcRenderer.invoke('jokes:savePreview', token),
-  jokesGetById: (id) => ipcRenderer.invoke('jokes:getById', id)
+  jokesGetById: (id) => ipcRenderer.invoke('jokes:getById', id),
+  jokesFetchMissingDetails: (id) => ipcRenderer.invoke('jokes:fetchMissingDetails', id)
 };
 
 contextBridge.exposeInMainWorld('studydockBridge', api);

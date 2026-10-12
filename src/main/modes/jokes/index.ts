@@ -40,6 +40,10 @@ export function registerJokesMode(db: Database.Database, gemini: GeminiClient, s
     if (event.senderFrame !== event.sender.mainFrame || typeof id !== 'string' || !id || id.length > 200) throw new Error('Invalid joke details request');
     return service.getById(id);
   });
+  ipcMain.handle('jokes:fetchMissingDetails', (event, id: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame || typeof id !== 'string' || !id || id.length > 200) throw new Error('Invalid joke details request');
+    return service.fetchMissingDetails(id);
+  });
 
   return { service, repository, migrations: [jokesMigration, jokesExamplesMigration] };
 }

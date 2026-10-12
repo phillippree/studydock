@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { promises as fs } from 'node:fs';
 import path from 'path';
 import { connectionTestSchema } from './gemini/connectionTest';
 import { storagePaths } from './storage/paths';
@@ -14,6 +15,7 @@ import { jokesModeDescriptor, registerJokesMode } from './modes/jokes';
 import { ModeDescriptor } from '../shared/contracts/modes';
 import { checkForUpdates } from './updates/checkForUpdates';
 import { appLogger } from './logging/logger';
+import { LibraryTransferService } from './libraryTransfer/service';
 
 const LATEST_RELEASE_PAGE = 'https://github.com/phillippree/studydock/releases/latest';
 
@@ -87,7 +89,50 @@ async function createWindow(): Promise<BrowserWindow> {
   return win;
 }
 
-function registerSettingsHandlers(): void {
+function registerSettingsHandlers(db: ReturnType<typeof getDatabase>): void {
+  const libraryTransfer = new LibraryTransferService(db);
+  const authorized = (event: Electron.IpcMainInvokeEvent) =>
+    !!mainWindow && event.sender === mainWindow.webContents && event.senderFrame === mainWindow.webContents.mainFrame;
+  ipcMain.handle('library:exportList', async (event) => {
+    if (!authorized(event)) throw new Error('Unauthorized library export');
+    const file = libraryTransfer.exportList();
+    const content = JSON.stringify(file, null, 2);
+    if (Buffer.byteLength(content, 'utf8') > 10 * 1024 * 1024) throw new Error('Your library list is larger than the 10 MB file limit.');
+    const selected = await dialog.showSaveDialog(mainWindow!, {
+      title: 'Export StudyDock library list',
+      defaultPath: `StudyDock-library-${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: 'StudyDock library list', extensions: ['json'] }]
+    });
+    if (selected.canceled || !selected.filePath) return { canceled: true };
+    await fs.writeFile(selected.filePath, content, { encoding: 'utf8', flag: 'w' });
+    return { canceled: false, path: selected.filePath, counts: {
+      words: file.words.length, expressions: file.expressions.length, connectors: file.connectors.length, jokes: file.jokes.length
+    } };
+  });
+  ipcMain.handle('library:importList', async (event) => {
+    if (!authorized(event)) throw new Error('Unauthorized library import');
+    const selected = await dialog.showOpenDialog(mainWindow!, {
+      title: 'Import StudyDock library list',
+      properties: ['openFile'],
+      filters: [{ name: 'StudyDock library list', extensions: ['json'] }]
+    });
+    if (selected.canceled || !selected.filePaths[0]) return { canceled: true };
+    const stat = await fs.stat(selected.filePaths[0]);
+    if (stat.size > 10 * 1024 * 1024) throw new Error('This library file is too large (10 MB maximum).');
+    const file = libraryTransfer.parse(await fs.readFile(selected.filePaths[0], 'utf8'));
+    const confirmation = await dialog.showMessageBox(mainWindow!, {
+      type: 'question',
+      title: 'Import library list?',
+      message: 'Add these items to StudyDock?',
+      detail: `${file.words.length} words · ${file.expressions.length} idioms and phrases · ${file.connectors.length} connectors · ${file.jokes.length} jokes and punchlines\n\nAlready saved items will be skipped. Details can be fetched later; this import does not contact Gemini.`,
+      buttons: ['Import', 'Cancel'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true
+    });
+    if (confirmation.response !== 0) return { canceled: true };
+    return { canceled: false, result: libraryTransfer.importList(file) };
+  });
   ipcMain.handle('updates:checkForUpdates', async (event) => {
     if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
       throw new Error('Unauthorized update check');
@@ -171,7 +216,7 @@ async function initializeApp(): Promise<void> {
   ]);
 
   // Register settings & mode registry IPC handlers
-  registerSettingsHandlers();
+  registerSettingsHandlers(db);
 
   // Create UI Window
   mainWindow = await createWindow();

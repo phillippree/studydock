@@ -54,6 +54,14 @@ describe('Connectors mode', () => {
     expect(repository.list({ offset: 0, limit: 6 }).total).toBe(1);
   });
 
+  it('fills an imported connector with a meaning and examples on demand', async () => {
+    const imported = repository.save({ connector: 'however', normalizedConnector: 'however', category: 'contrast', language: 'en', meaning: '', examples: [] });
+    vi.spyOn(gemini, 'generateStructured').mockResolvedValueOnce({ connector: 'however', category: 'contrast', language: 'en', recognized: true, meaning: 'Marks a contrast.', examples });
+    const updated = await service.refreshExamples(imported.id);
+    expect(updated.meaning).toBe('Marks a contrast.');
+    expect(updated.examples).toHaveLength(6);
+  });
+
   it('accepts a valid connector schema and rejects examples without both voices', () => {
     const valid = { connector: 'therefore', category: 'cause-effect', language: 'en', recognized: true, meaning: 'Shows a result.', examples };
     expect(validateConnectorLookup(valid, 'therefore', 'en').examples).toHaveLength(6);

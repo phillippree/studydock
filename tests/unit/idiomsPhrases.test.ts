@@ -65,6 +65,20 @@ describe('Idioms & Phrases mode', () => {
     expect(repository.list({ offset: 0, limit: 6 }).total).toBe(1);
   });
 
+  it('fills an imported expression only when details are requested', async () => {
+    const imported = repository.save({ expression: 'break the ice', normalizedExpression: 'break the ice', type: 'idiom', language: 'en', meaning: '', examples: [] });
+    const generate = vi.spyOn(gemini, 'generateStructured').mockResolvedValueOnce({
+      expression: imported.expression, language: 'en', recognized: true,
+      meaning: 'To help people relax.', examples: sixExamples
+    });
+    expect(repository.getRandomQuizPrompt()).toBeNull();
+    const updated = await service.refreshExamples(imported.id);
+    expect(updated.meaning).toBe('To help people relax.');
+    expect(updated.examples).toHaveLength(6);
+    expect(repository.getRandomQuizPrompt()?.id).toBe(imported.id);
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
   it('accepts Gemini null suggestion when a recognized phrase has no correction', () => {
     expect(validateExpressionLookup({
       expression: 'speak of the devil', type: 'phrase', language: 'en', recognized: true,

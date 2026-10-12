@@ -19,6 +19,7 @@ import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQ
 import { UpdateCheckResult } from './updates';
 import { ConnectorEntry, ConnectorListPage, ConnectorListQuery, ConnectorLookupResult, ConnectorSaveResult } from './connectors';
 import { JokeEntry, JokeListPage, JokeListQuery, JokeLookupResult, JokeSaveResult, JokeType } from './jokes';
+import { LibraryImportResult, LibraryTransferCounts } from './libraryTransfer';
 
 export interface StudyDockAPI {
   // Application updates
@@ -36,6 +37,8 @@ export interface StudyDockAPI {
   listModels(apiKey?: string): Promise<ListModelsResult>;
   setModel(model: string): Promise<{ success: boolean }>;
   openStorageFolder(): Promise<{ success: boolean }>;
+  exportLibraryList(): Promise<{ canceled: boolean; path?: string; counts?: LibraryTransferCounts }>;
+  importLibraryList(): Promise<{ canceled: boolean; result?: LibraryImportResult }>;
 
   // Vocabulary Mode Operations
   vocabGetRandomWord(options?: { excludeWordId?: string }): Promise<VocabWordWithDefinitions | null>;
@@ -78,6 +81,7 @@ export interface StudyDockAPI {
   jokesLookup(input: { text: string; type: JokeType; language?: string }): Promise<JokeLookupResult>;
   jokesSavePreview(token: string): Promise<JokeSaveResult>;
   jokesGetById(id: string): Promise<JokeEntry | null>;
+  jokesFetchMissingDetails(id: string): Promise<JokeEntry>;
 }
 
 declare global {

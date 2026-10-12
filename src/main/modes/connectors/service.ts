@@ -81,15 +81,18 @@ export class ConnectorsService {
     const existing = this.repository.getById(id);
     if (!existing) throw new Error('This connector is no longer in your library.');
     if (!this.gemini.getApiKey()) throw new Error('Add a Gemini API key in Home settings before refreshing examples.');
+    const needsDetails = !existing.meaning;
     const response = await this.gemini.generateStructured({
-      prompt: buildConnectorExamplesRefreshPrompt(existing.connector, existing.category, existing.meaning, existing.language),
+      prompt: needsDetails ? buildConnectorLookupPrompt(existing.connector, existing.language) : buildConnectorExamplesRefreshPrompt(existing.connector, existing.category, existing.meaning, existing.language),
       systemInstruction: buildConnectorSystemInstruction(),
       modelOverride: this.settings.getModel(),
       schemaValidator: raw => validateConnectorLookup(raw, existing.connector, existing.language, existing.category)
     });
     if (!response.recognized || !response.meaning) throw new Error('Gemini could not verify this connector while refreshing examples. Your saved examples were kept.');
-    const updated = this.repository.replaceExamples(id, response.examples);
-    if (!updated) throw new Error('This connector was removed before its examples could be saved.');
+    const updated = needsDetails
+      ? this.repository.fillMissingDetails(id, response.meaning, response.examples)
+      : this.repository.replaceExamples(id, response.examples);
+    if (!updated) throw new Error('This connector changed before its details could be saved. Please reload your library.');
     return updated;
   }
 

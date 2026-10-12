@@ -5,6 +5,7 @@ import { jokesExamplesMigration, jokesMigration } from '../../src/main/modes/jok
 import { JokesRepository } from '../../src/main/modes/jokes/repository';
 import { JokesService } from '../../src/main/modes/jokes/service';
 import { validateJokeLookup } from '../../src/main/modes/jokes/schema';
+import { validateJokeMissingDetails } from '../../src/main/modes/jokes/missingDetails';
 import { GeminiClient } from '../../src/main/gemini/client';
 import { SettingsService } from '../../src/main/settings/service';
 
@@ -36,6 +37,17 @@ describe('Punchlines & Jokes mode', () => {
     { example: 'Jordan repeated the joke to explain why the wordplay was clever.', voice: 'active' as const },
     { example: 'The joke was repeated later because its wordplay was so clever.', voice: 'passive' as const }
   ];
+
+  it('fills an imported joke without rewriting its saved text', async () => {
+    const imported = repository.save({ text: 'Who needs a hairstylist when I have a pillow?', normalizedText: 'who needs a hairstylist when i have a pillow?', type: 'joke', language: 'en', explanation: '', examples: [] });
+    const raw = { text: imported.text, type: 'joke', language: 'en', recognized: true, explanation: 'The pillow humorously replaces a hairstylist.', examples };
+    vi.spyOn(gemini, 'generateStructured').mockImplementationOnce(async request => request.schemaValidator(raw));
+    const updated = await service.fetchMissingDetails(imported.id);
+    expect(updated.text).toBe(imported.text);
+    expect(updated.explanation).toBe(raw.explanation);
+    expect(updated.examples).toHaveLength(6);
+    expect(() => validateJokeMissingDetails({ ...raw, text: 'A different joke' }, imported.text, 'joke', 'en')).toThrow('different joke');
+  });
 
   it('returns faithful wording choices and saves only the selected variation', async () => {
     vi.spyOn(gemini, 'generateStructured').mockResolvedValueOnce({

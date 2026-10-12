@@ -45,8 +45,9 @@ export class IdiomsPhrasesService {
     if (!existing) throw new Error('This expression is no longer in your library.');
     if (!this.gemini.getApiKey()) throw new Error('Add a Gemini API key in Home settings before refreshing examples.');
 
+    const needsDetails = !existing.meaning;
     const response = await this.gemini.generateStructured({
-      prompt: buildExpressionExamplesRefreshPrompt(existing.expression, existing.meaning, existing.language, existing.type),
+      prompt: needsDetails ? buildExpressionLookupPrompt(existing.expression, existing.language, existing.type) : buildExpressionExamplesRefreshPrompt(existing.expression, existing.meaning, existing.language, existing.type),
       systemInstruction: buildExpressionSystemInstruction(),
       modelOverride: this.settings.getModel(),
       schemaValidator: raw => validateExpressionLookup(raw, existing.expression, existing.language, existing.type)
@@ -55,8 +56,10 @@ export class IdiomsPhrasesService {
       throw new Error('Gemini could not verify this expression while refreshing its examples. Your saved examples were kept.');
     }
 
-    const updated = this.repository.replaceExamples(id, response.examples);
-    if (!updated) throw new Error('This expression was removed before its examples could be saved.');
+    const updated = needsDetails
+      ? this.repository.fillMissingDetails(id, response.meaning, response.examples)
+      : this.repository.replaceExamples(id, response.examples);
+    if (!updated) throw new Error('This expression changed before its details could be saved. Please reload your library.');
     return updated;
   }
 

@@ -97,7 +97,7 @@ export const ConnectorsPage: React.FC = () => {
       const updated = await window.studydockBridge.connectorsRefreshExamples(entry.id);
       setEntries(current => current.map(item => item.id === updated.id ? updated : item));
       setSelected(current => current?.id === updated.id ? updated : current);
-      setFeedback({ kind: 'success', message: `Refreshed six example sentences for “${updated.connector}”.` });
+      setFeedback({ kind: 'success', message: `Saved details and example sentences for “${updated.connector}”.` });
     } catch (error: unknown) {
       setFeedback({ kind: 'error', message: error instanceof Error ? error.message : 'Could not refresh the examples.' });
     } finally { setRefreshingId(null); }
@@ -128,7 +128,7 @@ export const ConnectorsPage: React.FC = () => {
       <label className="expressions-search"><Search size={17} /><span className="sr-only">Search saved connectors</span><input value={search} onChange={event => { setPage(0); setSearch(event.target.value); }} placeholder="Search connectors…" /></label>
       {loading ? <div className="card expressions-empty"><span className="spinner" /><p>Loading saved connectors…</p></div> : entries.length === 0 ? <div className="card expressions-empty"><Workflow size={28} /><h3>{total === 0 ? 'Your connector library is ready' : 'No matching connectors'}</h3><p>{total === 0 ? 'Look up a connector above to start your collection.' : 'Try another search or category.'}</p></div> : <div className="connectors-grid">{entries.map(entry => <article className="card expression-card" key={entry.id}>
         <div className="connector-entry-heading"><div><span className="expression-type-label">{categoryNames[entry.category]}</span><h3><button className="expression-open-button" onClick={() => setSelected(entry)}>{entry.connector}</button></h3></div><span className="expression-language">{entry.language.toUpperCase()}</span></div>
-        <p className="expression-meaning">{entry.meaning}</p>
+        <p className="expression-meaning">{entry.meaning || 'Details needed. Open this card to fetch them with Gemini.'}</p>
         <p className="connector-example-count">{entry.examples.length} examples · Select the connector to view the full card</p>
       </article>)}</div>}
       {!loading && total > 0 && <div className="expressions-pagination"><span>Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} of {total}</span><div><button className="btn btn-secondary btn-sm" onClick={() => setPage(current => Math.max(current - 1, 0))} disabled={page === 0}><ArrowLeft size={15} />Previous</button><span>Page {page + 1} of {Math.max(1, Math.ceil(total / pageSize))}</span><button className="btn btn-secondary btn-sm" onClick={() => setPage(current => current + 1)} disabled={(page + 1) * pageSize >= total}>Next<ArrowRight size={15} /></button></div></div>}
@@ -137,8 +137,8 @@ export const ConnectorsPage: React.FC = () => {
     {selected && <div className="modal-backdrop expression-detail-backdrop" onClick={() => setSelected(null)}><section className="modal-content expression-detail-modal" role="dialog" aria-modal="true" aria-labelledby="connector-detail-title" onClick={event => event.stopPropagation()}>
       <div className="expression-detail-header"><div><span className="expression-type-label">{categoryNames[selected.category]}</span><span className="expression-language">{selected.language.toUpperCase()}</span></div><button className="btn btn-ghost btn-sm" onClick={() => setSelected(null)} aria-label="Close connector card" autoFocus><X size={20} /></button></div>
       <h2 id="connector-detail-title" className="expression-detail-title">{selected.connector}</h2>
-      <section className="expression-detail-meaning"><h3>Meaning and use</h3><p>{selected.meaning}</p></section>
-      <section className="expression-detail-examples"><div className="expression-detail-examples-heading"><h3>Examples <span className="badge badge-saved">{selected.examples.length}</span></h3><button className="btn btn-secondary btn-sm expression-refresh-button" onClick={() => void refreshExamples(selected)} disabled={refreshingId !== null} aria-label={`Refresh six example sentences for ${selected.connector}`}>{refreshingId === selected.id ? <span className="spinner" /> : <RefreshCw size={15} />}{refreshingId === selected.id ? 'Refreshing…' : 'Refresh sentences'}</button></div>{renderExamples(selected.examples)}
+      <section className="expression-detail-meaning"><h3>Meaning and use</h3><p>{selected.meaning || 'Details needed. Use Fetch details to look this up with Gemini.'}</p></section>
+      <section className="expression-detail-examples"><div className="expression-detail-examples-heading"><h3>Examples <span className="badge badge-saved">{selected.examples.length}</span></h3><button className="btn btn-secondary btn-sm expression-refresh-button" onClick={() => void refreshExamples(selected)} disabled={refreshingId !== null} aria-label={`${selected.meaning ? 'Refresh examples' : 'Fetch details'} for ${selected.connector}`}>{refreshingId === selected.id ? <span className="spinner" /> : <RefreshCw size={15} />}{refreshingId === selected.id ? 'Working…' : selected.meaning ? 'Refresh sentences' : 'Fetch details'}</button></div>{renderExamples(selected.examples)}
         {feedback && <div className={`expressions-feedback ${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'}>{feedback.kind === 'error' ? <AlertCircle size={17} /> : <CheckCircle size={17} />}{feedback.message}</div>}
       </section>
     </section></div>}

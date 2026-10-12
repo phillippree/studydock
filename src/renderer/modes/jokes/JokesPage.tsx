@@ -23,6 +23,7 @@ export const JokesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [lookingUp, setLookingUp] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fetchingDetails, setFetchingDetails] = useState(false);
   const listRequest = useRef(0);
 
   const loadEntries = useCallback(async () => {
@@ -86,6 +87,20 @@ export const JokesPage: React.FC = () => {
     setFeedback(null);
   };
 
+  const fetchMissingDetails = async (entry: JokeEntry) => {
+    if (fetchingDetails) return;
+    setFetchingDetails(true);
+    setFeedback(null);
+    try {
+      const updated = await window.studydockBridge.jokesFetchMissingDetails(entry.id);
+      setEntries(current => current.map(item => item.id === updated.id ? updated : item));
+      setSelected(current => current?.id === updated.id ? updated : current);
+      setFeedback({ kind: 'success', message: `Saved details for “${updated.text}”.` });
+    } catch (error: unknown) {
+      setFeedback({ kind: 'error', message: error instanceof Error ? error.message : 'Could not fetch these details.' });
+    } finally { setFetchingDetails(false); }
+  };
+
   return <main className="jokes-page">
     <header className="connectors-heading">
       <span className="connectors-icon"><Laugh size={24} /></span>
@@ -115,11 +130,11 @@ export const JokesPage: React.FC = () => {
     <section className="connectors-library">
       <div className="connectors-library-heading"><div><h2><Laugh size={19} />Your joke library</h2><p>Saved jokes and punchlines are available offline.</p></div><div className="expressions-filters" role="group" aria-label="Filter joke library">{(['all', 'joke', 'punchline'] as const).map(value => <button key={value} className={`btn btn-sm ${filter === value ? 'btn-primary' : 'btn-secondary'}`} onClick={() => { setPage(0); setFilter(value); }}>{value === 'all' ? 'All' : value === 'joke' ? 'Jokes' : 'Punchlines'}</button>)}</div></div>
       <label className="expressions-search"><Search size={17} /><span className="sr-only">Search saved jokes and punchlines</span><input value={search} onChange={event => { setPage(0); setSearch(event.target.value); }} placeholder="Search your jokes and punchlines…" /></label>
-      {loading ? <div className="card expressions-empty"><span className="spinner" /><p>Loading saved jokes…</p></div> : entries.length === 0 ? <div className="card expressions-empty"><Laugh size={28} /><h3>{total === 0 ? 'Your library is ready' : 'No matching entries'}</h3><p>{total === 0 ? 'Look up a joke or punchline above to start your collection.' : 'Try another search or filter.'}</p></div> : <div className="connectors-grid">{entries.map(entry => <article className="card expression-card joke-library-card" key={entry.id}><div className="connector-entry-heading"><div><span className="expression-type-label">{entry.type}</span><h3><button className="expression-open-button" onClick={() => setSelected(entry)}>{entry.text}</button></h3></div><span className="expression-language">{entry.language.toUpperCase()}</span></div><p className="expression-meaning">{entry.explanation}</p><button className="joke-open-link" onClick={() => setSelected(entry)}>View full entry · {entry.examples.length} examples</button></article>)}</div>}
+      {loading ? <div className="card expressions-empty"><span className="spinner" /><p>Loading saved jokes…</p></div> : entries.length === 0 ? <div className="card expressions-empty"><Laugh size={28} /><h3>{total === 0 ? 'Your library is ready' : 'No matching entries'}</h3><p>{total === 0 ? 'Look up a joke or punchline above to start your collection.' : 'Try another search or filter.'}</p></div> : <div className="connectors-grid">{entries.map(entry => <article className="card expression-card joke-library-card" key={entry.id}><div className="connector-entry-heading"><div><span className="expression-type-label">{entry.type}</span><h3><button className="expression-open-button" onClick={() => setSelected(entry)}>{entry.text}</button></h3></div><span className="expression-language">{entry.language.toUpperCase()}</span></div><p className="expression-meaning">{entry.explanation || 'Details needed. Open this card to fetch them with Gemini.'}</p><button className="joke-open-link" onClick={() => setSelected(entry)}>View full entry · {entry.examples.length} examples</button></article>)}</div>}
       {!loading && total > 0 && <div className="expressions-pagination"><span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total}</span><div><button className="btn btn-secondary btn-sm" onClick={() => setPage(current => Math.max(current - 1, 0))} disabled={page === 0}><ArrowLeft size={15} />Previous</button><span>Page {page + 1} of {Math.max(1, Math.ceil(total / PAGE_SIZE))}</span><button className="btn btn-secondary btn-sm" onClick={() => setPage(current => current + 1)} disabled={(page + 1) * PAGE_SIZE >= total}>Next<ArrowRight size={15} /></button></div></div>}
     </section>
 
-    {selected && <div className="modal-backdrop expression-detail-backdrop" onClick={() => setSelected(null)}><section className="modal-content expression-detail-modal" role="dialog" aria-modal="true" aria-labelledby="joke-detail-title" onClick={event => event.stopPropagation()}><div className="expression-detail-header"><div><span className="expression-type-label">{selected.type}</span><span className="expression-language">{selected.language.toUpperCase()}</span></div><button className="btn btn-ghost btn-sm" onClick={() => setSelected(null)} aria-label="Close joke card" autoFocus><X size={20} /></button></div><h2 id="joke-detail-title" className="expression-detail-title">{selected.text}</h2><section className="expression-detail-meaning"><h3>Why it works</h3><p>{selected.explanation}</p></section><section className="expression-detail-examples"><h3>Example sentences <span className="badge badge-saved">{selected.examples.length}</span></h3>{selected.examples.length ? <JokeExamples examples={selected.examples} /> : <p>Example sentences are not available for this older saved entry.</p>}</section></section></div>}
+    {selected && <div className="modal-backdrop expression-detail-backdrop" onClick={() => setSelected(null)}><section className="modal-content expression-detail-modal" role="dialog" aria-modal="true" aria-labelledby="joke-detail-title" onClick={event => event.stopPropagation()}><div className="expression-detail-header"><div><span className="expression-type-label">{selected.type}</span><span className="expression-language">{selected.language.toUpperCase()}</span></div><button className="btn btn-ghost btn-sm" onClick={() => setSelected(null)} aria-label="Close joke card" autoFocus><X size={20} /></button></div><h2 id="joke-detail-title" className="expression-detail-title">{selected.text}</h2><section className="expression-detail-meaning"><h3>Why it works</h3><p>{selected.explanation || 'Details needed. Fetch them when you are ready.'}</p>{!selected.explanation && <button type="button" className="btn btn-secondary btn-sm" onClick={() => void fetchMissingDetails(selected)} disabled={fetchingDetails}>{fetchingDetails ? 'Looking up…' : 'Fetch details with Gemini'}</button>}</section><section className="expression-detail-examples"><h3>Example sentences <span className="badge badge-saved">{selected.examples.length}</span></h3>{selected.examples.length ? <JokeExamples examples={selected.examples} /> : <p>No example sentences have been saved yet.</p>}{feedback && <p role={feedback.kind === 'error' ? 'alert' : 'status'}>{feedback.message}</p>}</section></section></div>}
   </main>;
 };
 

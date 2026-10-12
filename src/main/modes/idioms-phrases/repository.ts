@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { randomUUID } from 'node:crypto';
 import { ExampleVoice, ExpressionType, IdiomPhraseEntry, IdiomPhraseExample, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt } from '../../../shared/contracts/idiomsPhrases';
 
 export class IdiomsPhrasesRepository {
@@ -90,11 +91,23 @@ export class IdiomsPhrasesRepository {
     return this.getById(id);
   }
 
+  public fillMissingDetails(id: string, meaning: string, examples: Array<{ example: string; voice: ExampleVoice }>): IdiomPhraseEntry | null {
+    const filled = this.db.transaction(() => {
+      const result = this.db.prepare("UPDATE idioms_phrases_entries SET meaning = ?, updated_at = ? WHERE id = ? AND meaning = ''")
+        .run(meaning, new Date().toISOString(), id);
+      if (!result.changes) return false;
+      const insert = this.db.prepare('INSERT INTO idioms_phrases_examples (id, entry_id, example, position, voice) VALUES (?, ?, ?, ?, ?)');
+      examples.forEach((item, index) => insert.run(`example_${randomUUID()}`, id, item.example, index + 1, item.voice));
+      return true;
+    });
+    return filled() ? this.getById(id) : null;
+  }
+
   public getRandomQuizPrompt(type?: ExpressionType, excludeId?: string): IdiomPhraseQuizPrompt | null {
     const row = this.db.prepare(`
       SELECT id, expression, type, language
       FROM idioms_phrases_entries
-      WHERE (? IS NULL OR type = ?)
+      WHERE meaning != '' AND (? IS NULL OR type = ?)
         AND (? IS NULL OR id != ?)
       ORDER BY RANDOM()
       LIMIT 1

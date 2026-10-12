@@ -17,7 +17,9 @@ import {
   EyeOff,
   Trash2,
   Cpu,
-  Laugh
+  Laugh,
+  Download,
+  Upload
 } from 'lucide-react';
 import { AvailableModel, DEFAULT_GEMINI_MODEL, GeminiSettings, SUPPORTED_GEMINI_MODELS, TestConnectionResult } from '../../shared/contracts/settings';
 
@@ -37,6 +39,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferMessage, setTransferMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [modelOptions, setModelOptions] = useState<AvailableModel[]>(SUPPORTED_GEMINI_MODELS);
 
@@ -161,6 +165,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
     }
   };
 
+  const handleExportLibrary = async () => {
+    setTransferBusy(true);
+    setTransferMessage(null);
+    try {
+      const outcome = await window.studydockBridge.exportLibraryList();
+      if (!outcome.canceled && outcome.counts) {
+        const count = Object.values(outcome.counts).reduce((total, value) => total + value, 0);
+        setTransferMessage({ type: 'success', text: `Exported ${count} saved items to ${outcome.path}.` });
+      }
+    } catch (error: unknown) {
+      setTransferMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not export your library.' });
+    } finally { setTransferBusy(false); }
+  };
+
+  const handleImportLibrary = async () => {
+    setTransferBusy(true);
+    setTransferMessage(null);
+    try {
+      const outcome = await window.studydockBridge.importLibraryList();
+      if (!outcome.canceled && outcome.result) {
+        const added = Object.values(outcome.result.imported).reduce((total, value) => total + value, 0);
+        const skipped = Object.values(outcome.result.skipped).reduce((total, value) => total + value, 0);
+        setTransferMessage({ type: 'success', text: `Imported ${added} items; skipped ${skipped} already saved or repeated items. Open a library to look up missing details when you want them.` });
+      }
+    } catch (error: unknown) {
+      setTransferMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not import the library file.' });
+    } finally { setTransferBusy(false); }
+  };
+
   return (
     <div style={{ maxWidth: '900px', margin: '0', padding: '40px 24px' }}>
       {/* Hero Welcome */}
@@ -233,6 +266,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenMode }) => {
           ))}
         </div>
       </div>
+
+      <section className="card" style={{ marginBottom: '24px' }} aria-labelledby="library-transfer-title">
+        <h2 id="library-transfer-title" style={{ fontSize: '1.25rem', marginBottom: '8px' }}>Move your libraries</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>Export a small file with your saved words, idioms and phrases, connectors, and jokes. Import it on another computer. Definitions, examples, pronunciation audio, and your Gemini key are not included.</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          <button className="btn btn-secondary" type="button" onClick={() => void handleExportLibrary()} disabled={transferBusy}><Download size={17} />Export library list</button>
+          <button className="btn btn-secondary" type="button" onClick={() => void handleImportLibrary()} disabled={transferBusy}><Upload size={17} />Import library list</button>
+        </div>
+        <p style={{ color: 'var(--text-dim)', fontSize: '0.83rem', marginTop: '12px' }}>Import keeps your current library, skips duplicates, and makes no Gemini requests. You can look up missing details later.</p>
+        {transferMessage && <p role={transferMessage.type === 'error' ? 'alert' : 'status'} style={{ color: transferMessage.type === 'error' ? 'var(--error-text)' : 'var(--success-text)', marginTop: '12px' }}>{transferMessage.text}</p>}
+      </section>
 
       {/* Gemini Connection & Settings Section */}
       <div className="card" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
