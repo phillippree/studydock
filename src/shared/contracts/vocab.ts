@@ -111,6 +111,17 @@ export type VerifyAndAddWordResult =
   | { status: 'unrecognized'; enteredWord: string }
   | { status: 'error'; enteredWord: string; message: string };
 
+export type PreviewWordResult =
+  | { status: 'preview'; token: string; word: string; language: string; senses: GeminiVocabSense[]; relatedForms: VocabRelatedForm[] }
+  | { status: 'duplicate'; word: VocabWord }
+  | { status: 'suggestions'; enteredWord: string; suggestions: string[] }
+  | { status: 'unrecognized'; enteredWord: string }
+  | { status: 'error'; enteredWord: string; message: string };
+
+export type SaveWordPreviewResult =
+  | { status: 'added'; word: VocabWord; definitions: VocabDefinition[] }
+  | { status: 'duplicate'; word: VocabWord };
+
 export interface EditWordInput {
   id: string;
   displayWord: string;

@@ -293,6 +293,40 @@ describe('Vocabulary Service Logic and Resilience', () => {
     expect(repo.getDefinitionsForWord(result.word.id)[0].synonyms).toEqual(['perceptive', 'observant']);
   });
 
+  it('previews meanings and examples without saving until the user chooses Save', async () => {
+    const generate = vi.spyOn(mockGemini, 'generateStructured').mockResolvedValueOnce({
+      word: 'perspicacious', language: 'en', recognized: true,
+      senses: [{ partOfSpeech: 'adjective', definition: 'Quick to notice and understand things.', synonyms: ['perceptive'],
+        examples: Array.from({ length: 6 }, (_, index) => ({ example: `Perspicacious example ${index + 1}.`, voice: index % 2 ? 'passive' : 'active' })) }],
+      relatedForms: []
+    });
+    const preview = await service.previewWord({ word: 'perspicacious' });
+    expect(preview.status).toBe('preview');
+    if (preview.status !== 'preview') throw new Error('Expected a preview');
+    expect(preview.senses[0].examples).toHaveLength(6);
+    expect(repo.findWordByNormalized('perspicacious', 'en')).toBeNull();
+    const saved = service.saveWordPreview(preview.token);
+    expect(saved.status).toBe('added');
+    expect(repo.findWordByNormalized('perspicacious', 'en')).not.toBeNull();
+    expect(generate).toHaveBeenCalledTimes(1);
+    await expect(service.previewWord({ word: ' PERSPIcacious ' })).resolves.toMatchObject({ status: 'duplicate' });
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(() => service.saveWordPreview(preview.token)).toThrow(/expired/);
+  });
+
+  it('does not add a second copy if the word is saved after preview', async () => {
+    vi.spyOn(mockGemini, 'generateStructured').mockResolvedValueOnce({
+      word: 'perspicacious', language: 'en', recognized: true,
+      senses: [{ partOfSpeech: 'adjective', definition: 'Perceptive.', synonyms: [],
+        examples: Array.from({ length: 6 }, (_, index) => ({ example: `Example ${index + 1}.`, voice: 'active' })) }]
+    });
+    const preview = await service.previewWord({ word: 'perspicacious' });
+    if (preview.status !== 'preview') throw new Error('Expected a preview');
+    await service.addWord({ word: 'perspicacious' });
+    expect(service.saveWordPreview(preview.token)).toMatchObject({ status: 'duplicate' });
+    expect(repo.getAllWords().filter(item => item.normalizedWord === 'perspicacious')).toHaveLength(1);
+  });
+
   it('does not add an unrecognized term', async () => {
     vi.spyOn(mockGemini, 'generateStructured').mockResolvedValueOnce({
       word: 'xyzqwerty987', language: 'en', recognized: false, senses: []

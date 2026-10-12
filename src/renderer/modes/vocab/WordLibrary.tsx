@@ -20,7 +20,8 @@ import {
   VocabDefinition,
   VocabRelatedForm,
   VocabWord,
-  ImportWordsResult
+  ImportWordsResult,
+  PreviewWordResult
 } from '../../../shared/contracts/vocab';
 
 interface WordLibraryProps {
@@ -54,6 +55,8 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
   const [wordSuggestions, setWordSuggestions] = useState<string[]>([]);
   const [addFeedback, setAddFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isVerifyingWord, setIsVerifyingWord] = useState(false);
+  const [wordPreview, setWordPreview] = useState<Extract<PreviewWordResult, { status: 'preview' }> | null>(null);
+  const [isSavingWordPreview, setIsSavingWordPreview] = useState(false);
 
   // Edit word state
   const [editingWord, setEditingWord] = useState<VocabWord | null>(null);
@@ -103,20 +106,22 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
 
   const handleAddWord = async (e?: React.FormEvent, selectedSuggestion?: string) => {
     if (e) e.preventDefault();
+    if (isVerifyingWord || isSavingWordPreview || (wordPreview && !selectedSuggestion)) return;
     const trimmed = (selectedSuggestion || newWordText).trim();
     if (!trimmed) {
-      setAddFeedback({ type: 'error', text: 'Enter a word or phrase above, then choose Add Word.' });
+      setAddFeedback({ type: 'error', text: 'Enter a word or phrase above, then choose Look up.' });
       return;
     }
 
     setAddFeedback(null);
     setWordSuggestions([]);
+    setWordPreview(null);
     if (selectedSuggestion) setNewWordText(selectedSuggestion);
     setIsVerifyingWord(true);
     try {
-      const result = await window.studydockBridge.vocabVerifyAndAddWord({ word: trimmed });
+      const result = await window.studydockBridge.vocabPreviewWord({ word: trimmed });
       if (result.status === 'duplicate') {
-        setAddFeedback({ type: 'error', text: `"${result.word.displayWord}" is already in your word library.` });
+        setAddFeedback({ type: 'success', text: `“${result.word.displayWord}” is already in your Word Library. No duplicate was added.` });
       } else if (result.status === 'suggestions') {
         setWordSuggestions(result.suggestions);
         setAddFeedback({ type: 'error', text: `Gemini couldn't verify "${result.enteredWord}" as written. Choose a possible spelling below to look it up.` });
@@ -124,13 +129,7 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
         setAddFeedback({ type: 'error', text: `Gemini couldn't find "${result.enteredWord}" as a recognized word or phrase. It wasn't added. Check the spelling and try again.` });
       } else if (result.status === 'error') {
         setAddFeedback({ type: 'error', text: `Couldn't check "${result.enteredWord}": ${result.message}` });
-      } else {
-        setAddFeedback({ type: 'success', text: `"${result.word.displayWord}" added with ${result.definitions.length} definition${result.definitions.length === 1 ? '' : 's'} and six examples per definition.` });
-        setNewWordText('');
-        setWordSuggestions([]);
-        await loadWords();
-        onWordListChanged();
-      }
+      } else setWordPreview(result);
     } catch (err: unknown) {
       const rawMessage = err instanceof Error ? err.message : 'Please try again.';
       const friendlyMessage = rawMessage.replace(/^Error invoking remote method '[^']+': Error:\s*/, '');
@@ -138,6 +137,26 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
     } finally {
       setIsVerifyingWord(false);
     }
+  };
+
+  const handleSaveWordPreview = async () => {
+    if (!wordPreview || isSavingWordPreview) return;
+    setIsSavingWordPreview(true);
+    setAddFeedback(null);
+    try {
+      const result = await window.studydockBridge.vocabSaveWordPreview(wordPreview.token);
+      setWordPreview(null);
+      if (result.status === 'duplicate') {
+        setAddFeedback({ type: 'success', text: `“${result.word.displayWord}” is already in your Word Library. No duplicate was added.` });
+      } else {
+        setAddFeedback({ type: 'success', text: `“${result.word.displayWord}” was added with ${result.definitions.length} definition${result.definitions.length === 1 ? '' : 's'} and six examples per definition.` });
+        setNewWordText('');
+        await loadWords();
+        onWordListChanged();
+      }
+    } catch (error: unknown) {
+      setAddFeedback({ type: 'error', text: error instanceof Error ? error.message : 'Could not save this word. Please try again.' });
+    } finally { setIsSavingWordPreview(false); }
   };
 
   const handleStartEdit = async (word: VocabWord) => {
@@ -641,8 +660,8 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
 
         {/* Tab 2: Add Word */}
         {activeTab === 'add' && (
-          <div style={{ flex: 1, paddingTop: '16px' }}>
-            <form onSubmit={handleAddWord} style={{ maxWidth: '480px' }}>
+          <div style={{ flex: 1, paddingTop: '16px', overflowY: 'auto' }}>
+            <form onSubmit={handleAddWord} style={{ maxWidth: '720px' }}>
               <div className="input-group">
                 <label className="input-label" htmlFor="new-vocabulary-word">Word or Term</label>
                 <input
@@ -651,9 +670,10 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
                   className="input-text"
                   placeholder="e.g. serendipity, epiphany, resilient"
                   value={newWordText}
-                  disabled={isVerifyingWord}
+                  disabled={isVerifyingWord || isSavingWordPreview}
                   onChange={(e) => {
                     setNewWordText(e.target.value);
+                    setWordPreview(null);
                     setWordSuggestions([]);
                     if (addFeedback) setAddFeedback(null);
                   }}
@@ -661,14 +681,14 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
                   autoFocus
                 />
                 <p id="add-word-help" style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginTop: '6px' }}>
-                  Gemini will verify the spelling, then save the word, definitions, synonyms, and examples.
+                  Press Enter to preview Gemini’s meanings and examples. The word is saved only when you choose Save to Library.
                 </p>
               </div>
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                <button type="submit" className="btn btn-primary" disabled={isVerifyingWord}>
-                  {isVerifyingWord ? <div className="spinner" /> : <Plus size={16} />}
-                  {isVerifyingWord ? 'Checking with Gemini…' : 'Add Word'}
+                <button type="submit" className="btn btn-primary" disabled={isVerifyingWord || isSavingWordPreview || !!wordPreview || !newWordText.trim()}>
+                  {isVerifyingWord ? <div className="spinner" /> : <Search size={16} />}
+                  {isVerifyingWord ? 'Checking with Gemini…' : 'Look up'}
                 </button>
               </div>
 
@@ -698,6 +718,25 @@ export const WordLibrary: React.FC<WordLibraryProps> = ({
                   ))}</div>
                 </div>
               )}
+              {wordPreview && <section className="card" aria-label={`Preview for ${wordPreview.word}`} style={{ marginTop: '18px', padding: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
+                  <div><span className="expression-type-label">Preview · not saved</span><h3 style={{ marginTop: '6px' }}>{wordPreview.word}</h3></div>
+                  <span className="expression-language">{wordPreview.language.toUpperCase()}</span>
+                </div>
+                <div style={{ marginTop: '16px', display: 'grid', gap: '14px' }}>
+                  {wordPreview.senses.map((sense, index) => <article key={`${sense.partOfSpeech}-${index}`} style={{ padding: '14px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
+                    <h4 style={{ color: 'var(--accent-primary)', marginBottom: '8px', textTransform: 'capitalize' }}>{sense.partOfSpeech}</h4>
+                    <p>{sense.definition}</p>
+                    {sense.synonyms.length > 0 && <p style={{ marginTop: '8px', color: 'var(--text-secondary)', fontSize: '0.83rem' }}>Synonyms: {sense.synonyms.join(', ')}</p>}
+                    <div className="expression-examples" style={{ marginTop: '10px' }}>{sense.examples.map((item, exampleIndex) => <p key={`${index}-${exampleIndex}`}><span className={`expression-example-voice ${item.voice}`}>{item.voice}</span>“{item.example}”</p>)}</div>
+                  </article>)}
+                </div>
+                {wordPreview.relatedForms.length > 0 && <p style={{ marginTop: '12px', color: 'var(--text-secondary)', fontSize: '0.83rem' }}>Related forms: {wordPreview.relatedForms.map(item => `${item.form} (${item.partOfSpeech})`).join(', ')}</p>}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
+                  <button className="btn btn-primary" type="button" onClick={() => void handleSaveWordPreview()} disabled={isSavingWordPreview}>{isSavingWordPreview ? <span className="spinner" /> : <Plus size={16} />}{isSavingWordPreview ? 'Saving…' : 'Save to Library'}</button>
+                  <button className="btn btn-secondary" type="button" onClick={() => { setWordPreview(null); setAddFeedback(null); }} disabled={isSavingWordPreview}>Discard preview</button>
+                </div>
+              </section>}
             </form>
           </div>
         )}

@@ -1,4 +1,5 @@
 import { VocabRepository } from './repository';
+import { randomUUID } from 'node:crypto';
 import { GeminiClient } from '../../gemini/client';
 import { SettingsService } from '../../settings/service';
 import { buildVocabSystemInstruction, buildVocabUserPrompt, VOCAB_PROMPT_VERSION } from './prompt';
@@ -16,12 +17,15 @@ import {
   VocabRelatedForm,
   VocabWord,
   VocabWordWithDefinitions,
-  VerifyAndAddWordResult
+  VerifyAndAddWordResult,
+  PreviewWordResult,
+  SaveWordPreviewResult
 } from '../../../shared/contracts/vocab';
 
 export class VocabService {
   private inFlightRequests = new Map<string, Promise<VocabWordWithDefinitions>>();
   private inFlightVerifiedAdds = new Map<string, Promise<VerifyAndAddWordResult>>();
+  private readonly pendingWordPreviews = new Map<string, { displayWord: string; normalizedWord: string; language: string; model: string; response: GeminiVocabResponse; expiresAt: number }>();
 
   constructor(
     private repository: VocabRepository,
@@ -289,6 +293,85 @@ export class VocabService {
     }
   }
 
+  public async previewWord(input: AddWordInput): Promise<PreviewWordResult> {
+    const displayWord = input.word.trim();
+    if (!displayWord) throw new Error('Word cannot be blank.');
+    if (displayWord.length > 100) throw new Error('Word or phrase cannot exceed 100 characters.');
+    const language = input.language?.trim() || 'en';
+    const normalizedWord = normalizeWord(displayWord);
+    const existing = this.repository.findWordByNormalized(normalizedWord, language);
+    if (existing) return { status: 'duplicate', word: existing };
+    if (!this.gemini.getApiKey()) throw new Error('Add a Gemini API key in Home settings before looking up a new word.');
+    const model = this.settings.getModel();
+    let response: GeminiVocabResponse;
+    try {
+      response = await this.requestVerifiedWord(displayWord, normalizedWord, language, model);
+    } catch (error: unknown) {
+      return { status: 'error', enteredWord: displayWord, message: error instanceof Error ? error.message : 'Gemini could not check this word. Please try again.' };
+    }
+    if (!response.recognized) {
+      return response.suggestions?.length
+        ? { status: 'suggestions', enteredWord: displayWord, suggestions: response.suggestions }
+        : { status: 'unrecognized', enteredWord: displayWord };
+    }
+    const racedDuplicate = this.repository.findWordByNormalized(normalizedWord, language);
+    if (racedDuplicate) return { status: 'duplicate', word: racedDuplicate };
+    this.removeExpiredWordPreviews();
+    while (this.pendingWordPreviews.size >= 50) {
+      const oldest = this.pendingWordPreviews.keys().next().value;
+      if (!oldest) break;
+      this.pendingWordPreviews.delete(oldest);
+    }
+    const token = randomUUID();
+    this.pendingWordPreviews.set(token, { displayWord, normalizedWord, language, model, response, expiresAt: Date.now() + 15 * 60 * 1000 });
+    return { status: 'preview', token, word: displayWord, language, senses: response.senses, relatedForms: response.relatedForms ?? [] };
+  }
+
+  public saveWordPreview(token: string): SaveWordPreviewResult {
+    this.removeExpiredWordPreviews();
+    const preview = this.pendingWordPreviews.get(token);
+    if (!preview) throw new Error('This word preview expired. Look up the word again.');
+    const existing = this.repository.findWordByNormalized(preview.normalizedWord, preview.language);
+    if (existing) {
+      this.pendingWordPreviews.delete(token);
+      return { status: 'duplicate', word: existing };
+    }
+    try {
+      const saved = this.repository.createWordWithDefinitions(
+        preview.displayWord, preview.normalizedWord, preview.language,
+        preview.response.senses.map(sense => ({
+          partOfSpeech: sense.partOfSpeech, definition: sense.definition, examples: sense.examples,
+          synonyms: sense.synonyms, source: 'gemini', modelIdentifier: preview.model, promptVersion: VOCAB_PROMPT_VERSION
+        })),
+        preview.response.relatedForms ?? []
+      );
+      this.pendingWordPreviews.delete(token);
+      return { status: 'added', ...saved };
+    } catch (error: unknown) {
+      const racedDuplicate = this.repository.findWordByNormalized(preview.normalizedWord, preview.language);
+      if (racedDuplicate) {
+        this.pendingWordPreviews.delete(token);
+        return { status: 'duplicate', word: racedDuplicate };
+      }
+      throw error;
+    }
+  }
+
+  private removeExpiredWordPreviews(): void {
+    for (const [token, preview] of this.pendingWordPreviews) {
+      if (preview.expiresAt <= Date.now()) this.pendingWordPreviews.delete(token);
+    }
+  }
+
+  private requestVerifiedWord(displayWord: string, normalizedWord: string, language: string, model: string): Promise<GeminiVocabResponse> {
+    return this.gemini.generateStructured({
+      prompt: buildVocabUserPrompt({ word: displayWord, language }),
+      systemInstruction: buildVocabSystemInstruction(),
+      modelOverride: model,
+      schemaValidator: raw => validateAndNormalizeVocabResponse(raw, normalizedWord, language)
+    });
+  }
+
   private async executeVerifyAndAddWord(
     displayWord: string,
     normalizedWord: string,
@@ -301,12 +384,7 @@ export class VocabService {
     const model = this.settings.getModel();
     let response: GeminiVocabResponse;
     try {
-      response = await this.gemini.generateStructured({
-        prompt: buildVocabUserPrompt({ word: displayWord, language }),
-        systemInstruction: buildVocabSystemInstruction(),
-        modelOverride: model,
-        schemaValidator: raw => validateAndNormalizeVocabResponse(raw, normalizedWord, language)
-      });
+      response = await this.requestVerifiedWord(displayWord, normalizedWord, language, model);
     } catch (error: unknown) {
       return {
         status: 'error',

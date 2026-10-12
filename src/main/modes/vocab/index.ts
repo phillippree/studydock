@@ -88,6 +88,17 @@ export function registerVocabMode(
     return service.verifyAndAddWord({ word: request.word, language: request.language });
   });
 
+  ipcMain.handle('vocab:previewWord', async (event, input: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame) throw new Error('Unauthorized word preview request');
+    const request = z.object({ word: z.string().trim().min(1).max(100), language: z.string().trim().min(2).max(20).optional() }).parse(input);
+    return service.previewWord(request);
+  });
+
+  ipcMain.handle('vocab:saveWordPreview', async (event, token: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame || typeof token !== 'string' || !token || token.length > 100) throw new Error('Invalid word preview save request');
+    return service.saveWordPreview(token);
+  });
+
   ipcMain.handle('vocab:editWord', async (_event, input) => {
     if (!input || typeof input.id !== 'string' || typeof input.displayWord !== 'string') {
       throw new Error('Invalid edit word input');

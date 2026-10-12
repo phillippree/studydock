@@ -12,7 +12,9 @@ import {
   VocabRelatedForm,
   VocabWord,
   VocabWordWithDefinitions,
-  VerifyAndAddWordResult
+  VerifyAndAddWordResult,
+  PreviewWordResult,
+  SaveWordPreviewResult
 } from './vocab';
 import { WordQuizAnswer } from './wordQuiz';
 import { ExpressionType, IdiomPhraseEntry, IdiomPhraseListPage, IdiomPhraseListQuery, IdiomPhraseQuizPrompt, LookupExpressionResult, SaveExpressionResult } from './idiomsPhrases';
@@ -48,6 +50,8 @@ export interface StudyDockAPI {
   vocabGetWordDetails(wordId: string): Promise<VocabWordWithDefinitions | null>;
   vocabAddWord(input: AddWordInput): Promise<{ word: VocabWord; isDuplicate: boolean }>;
   vocabVerifyAndAddWord(input: AddWordInput): Promise<VerifyAndAddWordResult>;
+  vocabPreviewWord(input: AddWordInput): Promise<PreviewWordResult>;
+  vocabSaveWordPreview(token: string): Promise<SaveWordPreviewResult>;
   vocabEditWord(input: EditWordInput): Promise<VocabWord>;
   vocabDeleteWord(wordId: string): Promise<{ success: boolean; deletedWord: VocabWord }>;
   vocabAddDefinition(input: AddDefinitionInput): Promise<VocabDefinition>;
