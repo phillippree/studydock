@@ -40,6 +40,8 @@ const api: StudyDockAPI = {
   vocabImportWords: (content, language) => ipcRenderer.invoke('vocab:importWords', { content, language }),
   vocabExportData: () => ipcRenderer.invoke('vocab:exportData'),
   vocabGetPronunciation: (wordId) => ipcRenderer.invoke('vocab:getPronunciation', wordId),
+  vocabGetVisual: (definitionId) => ipcRenderer.invoke('vocab:getVisual', definitionId),
+  vocabGenerateVisual: (definitionId, refresh) => ipcRenderer.invoke('vocab:generateVisual', { definitionId, refresh }),
 
   // Word Quiz Mode
   wordQuizGetRandomWord: (excludeWordId) => ipcRenderer.invoke('wordQuiz:getRandomWord', excludeWordId),

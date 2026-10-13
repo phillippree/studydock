@@ -17,6 +17,7 @@ import { VocabWordWithDefinitions } from '../../../shared/contracts/vocab';
 import { WordLibrary } from './WordLibrary';
 import { decodeMuLawPcm } from './pronunciationAudio';
 import { addRelatedFormToLibrary } from '../../shared/addRelatedForm';
+import { DefinitionVisual } from './DefinitionVisual';
 
 interface VocabPageProps {
   onNavigateHome: () => void;
@@ -429,6 +430,7 @@ export const VocabPage: React.FC<VocabPageProps> = ({ onNavigateHome }) => {
                     <div style={{ fontSize: '1.05rem', color: 'var(--text-primary)', marginBottom: '10px', lineHeight: 1.5 }}>
                       {sense.definition}
                     </div>
+                    {currentWordState.status !== 'not_saved' && <DefinitionVisual definitionId={sense.id} />}
 
                     <div className="vocab-synonyms">
                       <span className="vocab-synonyms-title">Synonyms</span>

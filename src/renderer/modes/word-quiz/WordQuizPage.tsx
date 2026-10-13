@@ -4,6 +4,7 @@ import { VocabDefinition, VocabRelatedForm, VocabWord } from '../../../shared/co
 import { WordLibrary } from '../vocab/WordLibrary';
 import { decodeMuLawPcm } from '../vocab/pronunciationAudio';
 import { addRelatedFormToLibrary } from '../../shared/addRelatedForm';
+import { DefinitionVisual } from '../vocab/DefinitionVisual';
 
 interface WordQuizPageProps {
   onNavigateHome: () => void;
@@ -255,6 +256,7 @@ export const WordQuizPage: React.FC<WordQuizPageProps> = () => {
             {definitions.map(definition => <article className="quiz-sense" key={definition.id}>
               <span className="quiz-pos">{definition.partOfSpeech}</span>
               <p>{definition.definition}</p>
+              <DefinitionVisual definitionId={definition.id} />
               <div className="vocab-synonyms">
                 <span className="vocab-synonyms-title">Synonyms</span>
                 {definition.synonyms.length > 0 ? (

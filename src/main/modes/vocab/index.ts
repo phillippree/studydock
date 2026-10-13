@@ -7,6 +7,7 @@ import { SettingsService } from '../../settings/service';
 import { ModeDescriptor } from '../../../shared/contracts/modes';
 import { vocabMigrations } from './migrations';
 import { VocabPronunciationService } from './pronunciation';
+import { VocabVisualService } from './visuals';
 import { z } from 'zod';
 import { ALLOWED_PARTS_OF_SPEECH } from './schema';
 
@@ -26,6 +27,7 @@ export function registerVocabMode(
   const repository = new VocabRepository(db);
   const service = new VocabService(repository, gemini, settings);
   const pronunciationService = new VocabPronunciationService(repository, gemini);
+  const visualService = new VocabVisualService(repository, gemini, settings);
 
   // Register validated IPC handlers for vocabulary operations
   ipcMain.handle('vocab:getRandomWord', async (_event, options) => {
@@ -153,6 +155,17 @@ export function registerVocabMode(
       throw new Error('Invalid word identifier for pronunciation');
     }
     return pronunciationService.getPronunciation(wordId);
+  });
+
+  ipcMain.handle('vocab:getVisual', async (event, definitionId: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame || typeof definitionId !== 'string' || !definitionId || definitionId.length > 128) throw new Error('Invalid visual request');
+    return visualService.getVisual(definitionId);
+  });
+
+  ipcMain.handle('vocab:generateVisual', async (event, input: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame) throw new Error('Unauthorized visual request');
+    const request = z.object({ definitionId: z.string().min(1).max(128), refresh: z.boolean().optional() }).parse(input);
+    return visualService.generateVisual(request.definitionId, request.refresh);
   });
 
   return {

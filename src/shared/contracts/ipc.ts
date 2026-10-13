@@ -12,6 +12,7 @@ import {
   VocabRelatedForm,
   VocabWord,
   VocabWordWithDefinitions,
+  VocabVisual,
   VerifyAndAddWordResult,
   PreviewWordResult,
   SaveWordPreviewResult
@@ -62,6 +63,8 @@ export interface StudyDockAPI {
   vocabImportWords(content: string, language?: string): Promise<ImportWordsResult>;
   vocabExportData(): Promise<ExportData>;
   vocabGetPronunciation(wordId: string): Promise<VocabPronunciationAudio>;
+  vocabGetVisual(definitionId: string): Promise<VocabVisual | null>;
+  vocabGenerateVisual(definitionId: string, refresh?: boolean): Promise<VocabVisual>;
 
   // Word Quiz mode
   wordQuizGetRandomWord(excludeWordId?: string): Promise<VocabWord | null>;

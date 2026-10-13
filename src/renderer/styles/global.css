@@ -603,3 +603,28 @@ html, body, #root {
   .expressions-pagination > div { width: 100%; justify-content: space-between; }
 }
 @media (max-width: 520px) { .quiz-page { padding: 24px 16px; } .quiz-card { padding: 30px 18px; } .quiz-answer { padding: 16px; } }
+.definition-visual {
+  margin: 14px 0;
+}
+
+.definition-visual figure {
+  margin: 0 0 10px;
+  max-width: 520px;
+}
+
+.definition-visual img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+}
+
+.definition-visual figcaption,
+.definition-visual-note {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-top: 7px;
+}

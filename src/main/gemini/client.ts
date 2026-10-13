@@ -19,7 +19,34 @@ export interface GenerateSpeechRequest {
   voice?: string;
 }
 
+export const VOCAB_IMAGE_MODEL = 'gemini-2.5-flash-image';
+
 export class GeminiClient {
+  public async generateVocabImage(prompt: string): Promise<Buffer> {
+    const key = this.getApiKey();
+    if (!key) throw new Error('Add a Gemini API key in Settings before generating a visual.');
+    try {
+      const ai = new GoogleGenAI({ apiKey: key });
+      this.logGemini('REQUEST', { operation: 'models.generateContent.image', model: VOCAB_IMAGE_MODEL, prompt }, key);
+      const response = await ai.models.generateContent({
+        model: VOCAB_IMAGE_MODEL,
+        contents: prompt,
+        config: { responseModalities: ['IMAGE'], httpOptions: { timeout: 60000, retryOptions: { attempts: 1 } } }
+      });
+      const part = response.candidates?.flatMap(candidate => candidate.content?.parts ?? []).find(item => item.inlineData?.data);
+      const encoded = part?.inlineData?.data;
+      const mimeType = part?.inlineData?.mimeType;
+      if (!encoded || !['image/png', 'image/jpeg'].includes(mimeType ?? '')) throw new Error('Gemini did not return a supported image.');
+      const bytes = Buffer.from(encoded, 'base64');
+      if (!bytes.length || bytes.length > 12 * 1024 * 1024) throw new Error('Gemini returned an image that is too large.');
+      this.logGemini('RESPONSE', { operation: 'models.generateContent.image', model: VOCAB_IMAGE_MODEL, mimeType, byteLength: bytes.length }, key);
+      return bytes;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logGemini('ERROR', { operation: 'models.generateContent.image', model: VOCAB_IMAGE_MODEL, message }, key);
+      throw new Error(`Could not generate the visual: ${this.sanitizeErrorMessage(message.split(key).join('[REDACTED]'))}`);
+    }
+  }
   private logGemini(direction: 'REQUEST' | 'RESPONSE' | 'ERROR', details: unknown, apiKey?: string): void {
     const redact = (value: unknown): unknown => {
       if (typeof value === 'string') {

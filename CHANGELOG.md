@@ -5,6 +5,7 @@ Notable StudyDock changes are recorded here. Entries are grouped by the app's re
 ## [Unreleased]
 
 ### Added
+- Vocabulary and revealed Word Quiz answers can generate a real-life visual and caption for each saved meaning, kept locally for offline viewing.
 - Home now has a dedicated Settings page with shortcuts to the logs, pronunciation audio cache, and application data folders.
 - Word Library now previews a new word’s meanings, synonyms, and examples before you choose whether to save it; existing words are identified without making another Gemini request.
 - Export or import a small library list containing saved words, idioms and phrases, connectors, and jokes. Imports skip duplicates and keep generated details out of the file; missing details can be fetched individually later.

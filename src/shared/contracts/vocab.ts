@@ -54,6 +54,13 @@ export interface VocabDefinition {
   updatedAt?: string;
 }
 
+export interface VocabVisual {
+  definitionId: string;
+  caption: string;
+  dataUrl: string;
+  generatedAt: string;
+}
+
 export interface VocabRelatedForm {
   form: string;
   partOfSpeech: PartOfSpeech;

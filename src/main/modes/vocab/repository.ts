@@ -10,6 +10,29 @@ import {
 export class VocabRepository {
   constructor(private db: Database) {}
 
+  public getVisualSource(definitionId: string): { word: string; language: string; definition: string; partOfSpeech: string } | null {
+    return this.db.prepare(`
+      SELECT w.display_word AS word, w.language, d.definition, d.part_of_speech AS partOfSpeech
+      FROM vocab_definitions d JOIN vocab_words w ON w.id = d.word_id WHERE d.id = ?
+    `).get(definitionId) as { word: string; language: string; definition: string; partOfSpeech: string } | undefined ?? null;
+  }
+
+  public getVisualRecord(definitionId: string): { caption: string; imageFile: string; generatedAt: string } | null {
+    return this.db.prepare(`
+      SELECT caption, image_file AS imageFile, generated_at AS generatedAt
+      FROM vocab_definition_visuals WHERE definition_id = ?
+    `).get(definitionId) as { caption: string; imageFile: string; generatedAt: string } | undefined ?? null;
+  }
+
+  public saveVisualRecord(definitionId: string, caption: string, imageFile: string, model: string): void {
+    this.db.prepare(`
+      INSERT INTO vocab_definition_visuals (definition_id, caption, image_file, model_identifier, generated_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(definition_id) DO UPDATE SET caption=excluded.caption,
+        image_file=excluded.image_file, model_identifier=excluded.model_identifier, generated_at=excluded.generated_at
+    `).run(definitionId, caption, imageFile, model, new Date().toISOString());
+  }
+
   public getRelatedFormsForWord(wordId: string): VocabRelatedForm[] {
     return this.db.prepare(`
       SELECT form, part_of_speech AS partOfSpeech
