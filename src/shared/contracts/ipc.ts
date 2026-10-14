@@ -65,6 +65,8 @@ export interface StudyDockAPI {
   vocabGetPronunciation(wordId: string): Promise<VocabPronunciationAudio>;
   vocabGetVisual(definitionId: string): Promise<VocabVisual | null>;
   vocabGenerateVisual(definitionId: string, refresh?: boolean): Promise<VocabVisual>;
+  vocabUploadVisual(definitionId: string, dataUrl: string, caption: string): Promise<VocabVisual>;
+  vocabDeleteVisual(definitionId: string): Promise<{ success: boolean }>;
 
   // Word Quiz mode
   wordQuizGetRandomWord(excludeWordId?: string): Promise<VocabWord | null>;

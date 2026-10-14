@@ -612,6 +612,74 @@ html, body, #root {
   max-width: 520px;
 }
 
+.definition-visual-enlarge {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.definition-visual-enlarge:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
+}
+
+.visual-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.88);
+}
+
+.visual-lightbox {
+  position: relative;
+  width: min(100%, 1500px);
+  max-height: 100%;
+  display: grid;
+  gap: 12px;
+}
+
+.visual-lightbox-close { justify-self: end; }
+.visual-lightbox figure { margin: 0; min-height: 0; text-align: center; }
+.visual-lightbox img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: calc(100vh - 140px);
+  margin: 0 auto;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+.visual-lightbox figcaption { color: #f5f5f5; margin-top: 10px; }
+
+.definition-visual-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.definition-visual-file { display: none; }
+
+.definition-visual-preview {
+  max-width: 520px;
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.definition-visual-preview p { margin: 0; overflow-wrap: anywhere; }
+.definition-visual-preview input { width: 100%; }
+
 .definition-visual img {
   display: block;
   width: 100%;

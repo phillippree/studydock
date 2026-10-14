@@ -168,6 +168,22 @@ export function registerVocabMode(
     return visualService.generateVisual(request.definitionId, request.refresh);
   });
 
+  ipcMain.handle('vocab:uploadVisual', async (event, input: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame) throw new Error('Unauthorized visual request');
+    const request = z.object({
+      definitionId: z.string().min(1).max(128),
+      dataUrl: z.string().max(14 * 1024 * 1024).startsWith('data:image/'),
+      caption: z.string().max(240)
+    }).parse(input);
+    return visualService.uploadVisual(request.definitionId, request.dataUrl, request.caption);
+  });
+
+  ipcMain.handle('vocab:deleteVisual', async (event, definitionId: unknown) => {
+    if (event.senderFrame !== event.sender.mainFrame || typeof definitionId !== 'string' || !definitionId || definitionId.length > 128) throw new Error('Invalid visual request');
+    await visualService.deleteVisual(definitionId);
+    return { success: true };
+  });
+
   return {
     service,
     repository,

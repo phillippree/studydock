@@ -5,6 +5,8 @@ Notable StudyDock changes are recorded here. Entries are grouped by the app's re
 ## [Unreleased]
 
 ### Added
+- Vocabulary and Word Quiz images now open in a larger viewer when clicked, with Escape and a close button to return to the card.
+- Vocabulary meanings can use a locally uploaded JPEG, PNG, or WebP image instead of a generated visual, with a preview, optional caption, replacement, and removal.
 - Vocabulary and revealed Word Quiz answers can generate a real-life visual and caption for each saved meaning, kept locally for offline viewing.
 - Home now has a dedicated Settings page with shortcuts to the logs, pronunciation audio cache, and application data folders.
 - Word Library now previews a new word’s meanings, synonyms, and examples before you choose whether to save it; existing words are identified without making another Gemini request.

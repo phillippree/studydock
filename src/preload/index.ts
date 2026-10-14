@@ -42,6 +42,8 @@ const api: StudyDockAPI = {
   vocabGetPronunciation: (wordId) => ipcRenderer.invoke('vocab:getPronunciation', wordId),
   vocabGetVisual: (definitionId) => ipcRenderer.invoke('vocab:getVisual', definitionId),
   vocabGenerateVisual: (definitionId, refresh) => ipcRenderer.invoke('vocab:generateVisual', { definitionId, refresh }),
+  vocabUploadVisual: (definitionId, dataUrl, caption) => ipcRenderer.invoke('vocab:uploadVisual', { definitionId, dataUrl, caption }),
+  vocabDeleteVisual: (definitionId) => ipcRenderer.invoke('vocab:deleteVisual', definitionId),
 
   // Word Quiz Mode
   wordQuizGetRandomWord: (excludeWordId) => ipcRenderer.invoke('wordQuiz:getRandomWord', excludeWordId),

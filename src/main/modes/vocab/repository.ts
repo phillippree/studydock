@@ -33,6 +33,10 @@ export class VocabRepository {
     `).run(definitionId, caption, imageFile, model, new Date().toISOString());
   }
 
+  public deleteVisualRecord(definitionId: string): void {
+    this.db.prepare('DELETE FROM vocab_definition_visuals WHERE definition_id = ?').run(definitionId);
+  }
+
   public getRelatedFormsForWord(wordId: string): VocabRelatedForm[] {
     return this.db.prepare(`
       SELECT form, part_of_speech AS partOfSpeech

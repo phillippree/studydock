@@ -6,7 +6,7 @@ import path from 'node:path';
 
 vi.mock('electron', () => ({
   app: {},
-  nativeImage: { createFromBuffer: () => ({ toJPEG: () => Buffer.from('fake-jpeg') }) }
+  nativeImage: { createFromBuffer: () => ({ toJPEG: () => Buffer.from('fake-jpeg'), isEmpty: () => false, getSize: () => ({ width: 1200, height: 800 }) }) }
 }));
 
 import { MigrationRunner } from '../../src/main/database/migrations';
@@ -71,5 +71,26 @@ describe('Vocabulary visuals', () => {
     repo.deleteDefinition(definitionId);
     expect(await service.getVisual(definitionId)).toBeNull();
     await expect(service.generateVisual(definitionId)).rejects.toThrow('no longer in your Word Library');
+  });
+
+  it('uploads an image locally, replaces an existing visual, and removes it without Gemini', async () => {
+    await service.generateVisual(definitionId);
+    vi.mocked(gemini.generateVocabImage).mockClear();
+    const uploaded = await service.uploadVisual(definitionId, `data:image/png;base64,${Buffer.from('fake-upload').toString('base64')}`, 'A helpful scene');
+    expect(uploaded.caption).toBe('A helpful scene');
+    expect(repo.getVisualRecord(definitionId)?.imageFile).toMatch(/^[a-f0-9-]+\.jpg$/);
+    expect(fs.readdirSync(storagePaths.getVocabImagesDir())).toHaveLength(1);
+    expect(gemini.generateVocabImage).not.toHaveBeenCalled();
+    await service.deleteVisual(definitionId);
+    expect(await service.getVisual(definitionId)).toBeNull();
+    expect(fs.readdirSync(storagePaths.getVocabImagesDir())).toHaveLength(0);
+  });
+
+  it('rejects invalid uploads without replacing a saved visual', async () => {
+    const existing = await service.generateVisual(definitionId);
+    await expect(service.uploadVisual(definitionId, 'data:text/html;base64,PGgxPkJhZDwvaDE+', 'Bad')).rejects.toThrow('JPEG, PNG, or WebP');
+    await expect(service.uploadVisual(definitionId, 'data:image/png;base64,not valid', 'Bad')).rejects.toThrow('JPEG, PNG, or WebP');
+    expect(await service.getVisual(definitionId)).toEqual(existing);
+    expect(fs.readdirSync(storagePaths.getVocabImagesDir())).toHaveLength(1);
   });
 });

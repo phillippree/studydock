@@ -45,6 +45,58 @@ export class VocabVisualService {
     return task;
   }
 
+  public async uploadVisual(definitionId: string, dataUrl: string, caption = ''): Promise<VocabVisual> {
+    if (this.inFlight.has(definitionId)) throw new Error('Wait for the current visual to finish before uploading another image.');
+    const source = this.repository.getVisualSource(definitionId);
+    if (!source) throw new Error('This meaning is no longer in your Word Library.');
+    const match = /^data:image\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl);
+    if (!match || match[1].length % 4 !== 0) throw new Error('Choose a JPEG, PNG, or WebP image.');
+    const bytes = Buffer.from(match[1], 'base64');
+    if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw new Error('Choose an image smaller than 10 MB.');
+    const image = nativeImage.createFromBuffer(bytes);
+    if (image.isEmpty()) throw new Error('This image could not be opened. Choose another file.');
+    const { width, height } = image.getSize();
+    if (width < 1 || height < 1 || width * height > 25_000_000) throw new Error('Choose an image smaller than 25 megapixels.');
+    const jpeg = image.toJPEG(78);
+    if (!jpeg.length || jpeg.length > 5 * 1024 * 1024) throw new Error('This image is too large to save.');
+    const savedCaption = caption.trim() || `Uploaded image for ${source.word}.`;
+    if (savedCaption.length > 240) throw new Error('Keep the caption under 240 characters.');
+    return this.saveVisual(definitionId, savedCaption, jpeg, 'user-upload');
+  }
+
+  public async deleteVisual(definitionId: string): Promise<void> {
+    if (this.inFlight.has(definitionId)) throw new Error('Wait for the current visual to finish before removing it.');
+    if (!this.repository.getVisualSource(definitionId)) throw new Error('This meaning is no longer in your Word Library.');
+    const previous = this.repository.getVisualRecord(definitionId);
+    if (!previous) return;
+    this.repository.deleteVisualRecord(definitionId);
+    if (/^[a-f0-9-]+\.jpg$/.test(previous.imageFile)) {
+      await fs.rm(path.join(storagePaths.getVocabImagesDir(), previous.imageFile), { force: true }).catch(() => {});
+    }
+  }
+
+  private async saveVisual(definitionId: string, caption: string, jpeg: Buffer, model: string): Promise<VocabVisual> {
+    if (!this.repository.getVisualSource(definitionId)) throw new Error('This meaning is no longer in your Word Library.');
+    const directory = storagePaths.getVocabImagesDir();
+    await fs.mkdir(directory, { recursive: true });
+    const fileName = `${randomUUID()}.jpg`;
+    const filePath = path.join(directory, fileName);
+    const previous = this.repository.getVisualRecord(definitionId);
+    try {
+      await fs.writeFile(filePath, jpeg, { flag: 'wx' });
+      this.repository.saveVisualRecord(definitionId, caption, fileName, model);
+    } catch (error) {
+      await fs.rm(filePath, { force: true });
+      throw error;
+    }
+    if (previous?.imageFile && /^[a-f0-9-]+\.jpg$/.test(previous.imageFile)) {
+      await fs.rm(path.join(directory, previous.imageFile), { force: true }).catch(() => {});
+    }
+    const saved = await this.getVisual(definitionId);
+    if (!saved) throw new Error('The visual was saved, but its meaning is no longer available.');
+    return saved;
+  }
+
   private async generate(definitionId: string, refresh: boolean): Promise<VocabVisual> {
     if (!refresh) {
       const cached = await this.getVisual(definitionId);
@@ -62,24 +114,6 @@ export class VocabVisualService {
     const image = await this.gemini.generateVocabImage(`${scene.imagePrompt}\nRealistic, empathetic everyday scene, natural lighting, no lettering or captions in the image. Landscape 3:2 composition.`);
     const jpeg = nativeImage.createFromBuffer(image).toJPEG(78);
     if (!jpeg.length || jpeg.length > 5 * 1024 * 1024) throw new Error('The generated image could not be compressed for local storage.');
-    if (!this.repository.getVisualSource(definitionId)) throw new Error('This meaning was removed while its visual was being generated.');
-    const directory = storagePaths.getVocabImagesDir();
-    await fs.mkdir(directory, { recursive: true });
-    const fileName = `${randomUUID()}.jpg`;
-    const filePath = path.join(directory, fileName);
-    const previous = this.repository.getVisualRecord(definitionId);
-    try {
-      await fs.writeFile(filePath, jpeg, { flag: 'wx' });
-      this.repository.saveVisualRecord(definitionId, scene.caption, fileName, VOCAB_IMAGE_MODEL);
-    } catch (error) {
-      await fs.rm(filePath, { force: true });
-      throw error;
-    }
-    if (previous?.imageFile && /^[a-f0-9-]+\.jpg$/.test(previous.imageFile)) {
-      await fs.rm(path.join(directory, previous.imageFile), { force: true }).catch(() => {});
-    }
-    const saved = await this.getVisual(definitionId);
-    if (!saved) throw new Error('The visual was saved, but its meaning is no longer available.');
-    return saved;
+    return this.saveVisual(definitionId, scene.caption, jpeg, VOCAB_IMAGE_MODEL);
   }
 }
